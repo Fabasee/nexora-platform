@@ -1,0 +1,5 @@
+Django>=5.2,<6.0
+djangorestframework>=3.16,<4.0
+django-environ>=0.12,<1.0
+gunicorn>=23,<24
+firebase-admin>=6.9,<7.0
