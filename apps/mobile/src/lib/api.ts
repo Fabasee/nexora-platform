@@ -50,3 +50,23 @@ export async function fetchAccessibleProducts(
   }
   return payload.results;
 }
+
+export type NexoraAccount = {
+  id: string;
+  status: "active" | "suspended" | "deactivated";
+  created_at: string;
+  providers: { provider: string; last_authenticated_at: string | null }[];
+};
+
+export async function fetchCurrentAccount(idToken: string): Promise<NexoraAccount> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/account/me/`, {
+    method: "GET",
+    headers: { Accept: "application/json", Authorization: `Bearer ${idToken}` },
+  });
+  if (!response.ok) throw new ApiError("Unable to load Nexora account.", response.status);
+  const payload = (await response.json()) as NexoraAccount;
+  if (!payload || typeof payload.id !== "string" || !Array.isArray(payload.providers)) {
+    throw new ApiError("The Nexora API returned an invalid account response.", response.status);
+  }
+  return payload;
+}
