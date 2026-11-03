@@ -16,6 +16,10 @@ const firebaseConfig = {
 
 let authInstance: Auth | null = null;
 
+export function isFirebaseConfigured(): boolean {
+  return Object.values(firebaseConfig).every((value) => value.length > 0);
+}
+
 function getFirebaseApp() {
   const requiredValues = Object.values(firebaseConfig);
   if (requiredValues.some((value) => value.length === 0)) {
