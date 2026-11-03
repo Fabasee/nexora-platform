@@ -1,10 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { getApp, getApps, initializeApp } from "firebase/app";
+import * as FirebaseAuth from "firebase/auth";
 import { getAuth, initializeAuth, type Auth } from "firebase/auth";
-// Firebase 12 includes this in its React Native runtime entry, but shared TS declarations omit it.
-// @ts-expect-error React Native-specific Firebase Auth export.
-import { getReactNativePersistence } from "firebase/auth";
+
+type ReactNativePersistenceFactory = (
+  storage: typeof AsyncStorage,
+) => NonNullable<Parameters<typeof initializeAuth>[1]>["persistence"];
+
+// Firebase 12 exposes this on the React Native runtime entry but not shared type declarations.
+const getReactNativePersistence = (
+  FirebaseAuth as unknown as { getReactNativePersistence: ReactNativePersistenceFactory }
+).getReactNativePersistence;
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? "",
