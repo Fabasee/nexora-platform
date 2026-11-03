@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../src/providers/AuthProvider";
@@ -36,7 +37,7 @@ function ProductCard({
 }
 
 export default function HomeScreen() {
-  const { status, user } = useAuth();
+  const { status, user, signOut } = useAuth();
   const authStatusLabel = status === "loading"
     ? "Checking account session"
     : status === "signed-in"
@@ -58,7 +59,7 @@ export default function HomeScreen() {
               <Text style={styles.brandCaption}>UNIVERSAL PLATFORM</Text>
             </View>
           </View>
-          <View style={styles.avatar}><Text style={styles.avatarText}>G</Text></View>
+          <Pressable onPress={() => router.push(status === "signed-in" ? "/account" : "/auth")} style={styles.avatar}><Text style={styles.avatarText}>{status === "signed-in" ? (user?.displayName?.[0] ?? user?.email?.[0] ?? "N").toUpperCase() : "↗"}</Text></Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -74,7 +75,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.sectionHeading}>
+        <View style={styles.accountCard}>\n          <View style={styles.accountCopy}>\n            <Text style={styles.accountTitle}>{status === "signed-in" ? "Your Nexora account" : "Get started with Nexora"}</Text>\n            <Text style={styles.accountBody}>{status === "signed-in" ? (user?.email ?? "Your account is connected") : "Sign in or create an account to access your connected products."}</Text>\n          </View>\n          {status === "signed-in" ? (\n            <Pressable onPress={() => router.push("/account")} style={styles.accountButton}><Text style={styles.accountButtonText}>Manage</Text></Pressable>\n          ) : (\n            <Pressable onPress={() => router.push("/auth")} style={styles.accountButton}><Text style={styles.accountButtonText}>Continue</Text></Pressable>\n          )}\n        </View>\n\n        <View style={styles.sectionHeading}>
           <View>
             <Text style={styles.sectionEyebrow}>THE ECOSYSTEM</Text>
             <Text style={styles.sectionTitle}>Explore Nexora</Text>
@@ -122,7 +123,7 @@ const styles = StyleSheet.create({
   onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#65D6A8" },
   pendingDot: { backgroundColor: "#D7B66A" },
   heroFootText: { color: "#D3E1F1", fontSize: 10, fontWeight: "700" },
-  sectionHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 30, marginBottom: 14 },
+  accountCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FFFFFF", borderRadius: 17, borderWidth: 1, borderColor: "#E9EDF3", padding: 15, marginTop: 15 },\n  accountCopy: { flex: 1 },\n  accountTitle: { color: "#1B2D46", fontSize: 12, fontWeight: "800" },\n  accountBody: { color: "#7C899B", fontSize: 10, lineHeight: 15, marginTop: 4 },\n  accountButton: { paddingHorizontal: 15, paddingVertical: 10, backgroundColor: "#172C4B", borderRadius: 10 },\n  accountButtonText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800" },\n  sectionHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 30, marginBottom: 14 },
   sectionEyebrow: { color: "#8997AA", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
   sectionTitle: { color: "#1B2D46", fontSize: 22, fontWeight: "800", marginTop: 5 },
   count: { color: "#8997AA", fontSize: 9, fontWeight: "800", letterSpacing: 1 },
