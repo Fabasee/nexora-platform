@@ -1,6 +1,8 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useAuth } from "../src/providers/AuthProvider";
+
 const products = [
   { code: "DD", name: "Day-Date", category: "Lifestyle", description: "Build meaningful connections", state: "Planned" },
   { code: "NM", name: "Nexora Muslim", category: "Faith & daily life", description: "A thoughtful companion for everyday life", state: "Planned" },
@@ -34,6 +36,17 @@ function ProductCard({
 }
 
 export default function HomeScreen() {
+  const { status, user } = useAuth();
+  const authStatusLabel = status === "loading"
+    ? "Checking account session"
+    : status === "signed-in"
+      ? `Signed in · ${user?.displayName ?? user?.email ?? "Nexora account"}`
+      : status === "signed-out"
+        ? "Firebase connected · Not signed in"
+        : status === "unconfigured"
+          ? "Firebase client configuration required"
+          : "Authentication unavailable";
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -56,8 +69,8 @@ export default function HomeScreen() {
             boundaries for every service.
           </Text>
           <View style={styles.heroFoot}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.heroFootText}>Platform foundation is online</Text>
+            <View style={[styles.onlineDot, status !== "signed-in" && styles.pendingDot]} />
+            <Text style={styles.heroFootText}>{authStatusLabel}</Text>
           </View>
         </View>
 
@@ -107,6 +120,7 @@ const styles = StyleSheet.create({
   heroBody: { color: "#C0CDDE", fontSize: 13, lineHeight: 21, marginTop: 14, maxWidth: 420 },
   heroFoot: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 23 },
   onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#65D6A8" },
+  pendingDot: { backgroundColor: "#D7B66A" },
   heroFootText: { color: "#D3E1F1", fontSize: 10, fontWeight: "700" },
   sectionHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 30, marginBottom: 14 },
   sectionEyebrow: { color: "#8997AA", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
