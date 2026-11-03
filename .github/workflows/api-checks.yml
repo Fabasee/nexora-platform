@@ -16,6 +16,10 @@ jobs:
     defaults:
       run:
         working-directory: services/api
+    env:
+      # Explicitly isolated, disposable settings for CI only.
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: "ci-only-not-a-production-secret-key-rotate-never-use-this-value"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
