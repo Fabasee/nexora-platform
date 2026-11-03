@@ -6,44 +6,76 @@ A modular, service-ready foundation for the Nexora multi-product ecosystem.
 
 ## Stack
 
-- Mobile: React Native, Expo, Expo Router, TypeScript
-- API: Django and Django REST Framework
-- Cloud integrations: Firebase behind replaceable infrastructure adapters
+- Mobile: React Native, Expo SDK 57, Expo Router, TypeScript
+- API: Django 5.2 and Django REST Framework
+- Identity provider: Firebase Authentication
+- Server integration: Firebase Admin SDK behind a lazy infrastructure adapter
 - Architecture: Modular Monolith → Service-Ready
 
 ## Core principles
 
 1. One Nexora identity does not imply shared access to every product's data.
 2. Product domains own their data and authorization policies.
-3. Domain and application layers remain provider-neutral; Firebase SDKs belong in infrastructure adapters.
-4. Default-deny authorization, validated inputs, audit trails, and secret-free source control.
-5. Build a coherent platform foundation before introducing individual products.
-6. Keep infrastructure replaceable and test boundaries explicitly.
+3. The canonical Nexora UUID is independent of Firebase UID and future identity providers.
+4. Provider tokens are verified by the API; client-supplied user IDs and roles are never trusted.
+5. Product membership and feature entitlements are separate authorization decisions.
+6. Default-deny authorization, explicit scopes, and secret-free source control.
+7. Keep infrastructure replaceable and test boundaries explicitly.
 
-## Planned layout
+## Repository layout
 
 ```text
-apps/mobile/             Expo Router application
+apps/mobile/             Expo Router application and Firebase client
 services/api/            Django REST API
-infra/firebase/          Security rules and safe Firebase configuration
+  apps/core/             Health and shared API primitives
+  apps/identity/         Canonical Nexora UUID and provider bindings
+  apps/products/         Product registry, memberships, entitlements
+  apps/integrations/     Firebase Admin infrastructure adapter
+infra/firebase/          Deny-by-default security rules
 docs/architecture/       System design and architecture decisions
-docs/security/           Threat model and security standards
+docs/security/           Security standards and public-repository checklist
 docs/development/        Local setup and contribution workflow
 ```
 
-## Initial delivery scope
+## Implemented foundation
 
-- Mobile application shell and typed navigation
-- Django API foundation and health endpoint
-- Provider-neutral identity and authentication contracts
-- Firebase adapter boundary (no credentials committed)
-- API error, pagination, logging, and request-correlation conventions
-- CI and developer documentation
+- Expo mobile shell with a responsive Nexora ecosystem home screen.
+- Firebase client initialization and authentication-state provider.
+- Typed API client for the authenticated product catalog.
+- Django API with a custom UUID-based Nexora user model.
+- Firebase ID-token verification with revocation checks.
+- Provider-neutral identity resolution with a unique provider-subject constraint.
+- Product registry, product membership, and time-bounded feature entitlements.
+- Scoped entitlement checks that fail closed when scope does not match.
+- Authenticated product catalog endpoint at `GET /api/v1/products/`.
+- Django migrations, focused identity/access tests, and GitHub Actions checks.
 
-## Security
+## Local checks
 
-Firebase client configuration is not authorization. Enforce access control in trusted backend services and Firebase Security Rules. Never publish Admin SDK credentials or disable App Check as a shortcut.
+API:
+
+```bash
+cd services/api
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test
+```
+
+Mobile:
+
+```bash
+cd apps/mobile
+npm install
+npm run typecheck
+npx expo install --check
+```
+
+## Security notes
+
+Firebase client configuration is public application metadata, not an authorization mechanism. The API verifies ID tokens using Firebase Admin. Firebase Admin service-account credentials and Django secrets must remain outside source control.
+
+The current mobile authentication layer observes Firebase auth state and obtains ID tokens; a user-facing sign-in/sign-up experience and production deployment configuration are still pending. Product-specific data APIs and product roles must be implemented in their owning domains.
 
 ## Project status
 
-Repository initialization in progress.
+Foundation implementation in progress on `feat/platform-foundation`. The `main` branch is intentionally unchanged until the foundation is reviewed.
