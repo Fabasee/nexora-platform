@@ -10,6 +10,13 @@ on:
       - "services/api/**"
       - ".github/workflows/api-checks.yml"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   django-check:
     runs-on: ubuntu-latest
