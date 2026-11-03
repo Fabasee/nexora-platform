@@ -75,7 +75,7 @@ class Entitlement(models.Model):
     class Meta:
         db_table = "products_entitlement"
         indexes = [
-            models.Index(fields=("user", "product", "feature_key", "status"), name="products_entitlement_lookup_idx"),
+            models.Index(fields=("user", "product", "feature_key", "status"), name="prod_entitlement_lookup_idx"),
         ]
 
     def __str__(self):
