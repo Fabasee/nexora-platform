@@ -6,8 +6,12 @@ import {
   type PropsWithChildren,
 } from "react";
 import {
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
+  updateProfile,
   type User,
 } from "firebase/auth";
 
@@ -18,6 +22,9 @@ type AuthStatus = "loading" | "signed-in" | "signed-out" | "unconfigured" | "err
 type AuthContextValue = {
   user: User | null;
   status: AuthStatus;
+  signIn: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -51,15 +58,37 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const value: AuthContextValue = {
-    user,
-    status,
-    signOut: async () => {
-      await firebaseSignOut(getFirebaseAuth());
-    },
+  const signIn = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const register = async (name: string, email: string, password: string) => {
+    const credential = await createUserWithEmailAndPassword(
+      getFirebaseAuth(),
+      email.trim(),
+      password,
+    );
+    try {
+      await updateProfile(credential.user, { displayName: name.trim() });
+    } catch (error) {
+      await firebaseSignOut(getFirebaseAuth());
+      throw error;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+  };
+
+  const signOut = async () => {
+    await firebaseSignOut(getFirebaseAuth());
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, status, signIn, register, resetPassword, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {
