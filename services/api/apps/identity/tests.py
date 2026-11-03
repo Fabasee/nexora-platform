@@ -1,4 +1,9 @@
+from unittest.mock import patch
+
 from django.test import TestCase
+from rest_framework.test import APIRequestFactory
+
+from .authentication import FirebaseIdentityAuthentication
 
 from .models import IdentityProviderAccount, NexoraUser
 from .services import IdentityAccessDenied, IdentityService, VerifiedIdentity
@@ -38,3 +43,37 @@ class IdentityServiceTests(TestCase):
             IdentityService.resolve_verified_identity(
                 VerifiedIdentity(provider="firebase", subject="firebase-user-003")
             )
+
+
+class FirebaseIdentityAuthenticationTests(TestCase):
+    @patch("apps.identity.authentication.firebase_auth.verify_id_token")
+    @patch("apps.identity.authentication.FirebaseAdminAppFactory.get_app")
+    def test_verified_firebase_token_resolves_internal_identity(self, get_app, verify_token):
+        get_app.return_value = object()
+        verify_token.return_value = {
+            "uid": "firebase-auth-subject",
+            "auth_time": 1_798_000_000,
+        }
+        request = APIRequestFactory().get(
+            "/api/v1/private/",
+            HTTP_AUTHORIZATION="Bearer valid-token",
+        )
+
+        user, credentials = FirebaseIdentityAuthentication().authenticate(request)
+
+        self.assertIsNone(credentials)
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.provider_accounts.get().provider_subject, "firebase-auth-subject")
+        verify_token.assert_called_once_with(
+            "valid-token",
+            app=get_app.return_value,
+            check_revoked=True,
+        )
+
+    def test_non_bearer_authorization_is_not_claimed(self):
+        request = APIRequestFactory().get(
+            "/api/v1/private/",
+            HTTP_AUTHORIZATION="Basic dXNlcjpwYXNz",
+        )
+
+        self.assertIsNone(FirebaseIdentityAuthentication().authenticate(request))
