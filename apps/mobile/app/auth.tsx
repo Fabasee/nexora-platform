@@ -168,7 +168,7 @@ export default function AuthScreen() {
             )}
 
             {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-            {!!notice && <Text accessibilityRole="status" style={styles.notice}>{notice}</Text>}
+            {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
 
             <Pressable
               accessibilityRole="button"
