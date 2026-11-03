@@ -1,0 +1,52 @@
+export type NexoraProduct = {
+  key: string;
+  name: string;
+  description: string;
+};
+
+type ProductListResponse = {
+  results: NexoraProduct[];
+};
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+function getApiBaseUrl(): string {
+  const value = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (!value) throw new Error("EXPO_PUBLIC_API_BASE_URL is not configured.");
+
+  const normalized = value.replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(normalized)) {
+    throw new Error("The Nexora API base URL must use HTTP or HTTPS.");
+  }
+  return normalized;
+}
+
+export async function fetchAccessibleProducts(
+  idToken: string,
+): Promise<NexoraProduct[]> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/products/`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new ApiError("Unable to load Nexora products.", response.status);
+  }
+
+  const payload = (await response.json()) as ProductListResponse;
+  if (!payload || !Array.isArray(payload.results)) {
+    throw new ApiError("The Nexora API returned an invalid response.", response.status);
+  }
+  return payload.results;
+}
