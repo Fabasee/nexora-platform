@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "apps.core",
+    "apps.identity",
     "apps.integrations",
 ]
 
@@ -52,6 +53,8 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": env.db("DJANGO_DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 }
+
+AUTH_USER_MODEL = "identity.NexoraUser"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
