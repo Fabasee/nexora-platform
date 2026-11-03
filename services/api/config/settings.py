@@ -1,20 +1,17 @@
-import os
 from pathlib import Path
 
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-env = environ.Env(
-    DJANGO_DEBUG=(bool, False),
-)
+env = environ.Env(DJANGO_DEBUG=(bool, False))
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="unsafe-local-only-change-me")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
-if not DEBUG and SECRET_KEY == "unsafe-local-only-change-me":
-    raise RuntimeError("DJANGO_SECRET_KEY must be set outside debug mode")
+if not DEBUG and (SECRET_KEY == "unsafe-local-only-change-me" or len(SECRET_KEY) < 50):
+    raise RuntimeError("Set a strong DJANGO_SECRET_KEY (at least 50 characters) outside debug mode.")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -25,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "apps.core",
+    "apps.integrations",
 ]
 
 MIDDLEWARE = [
@@ -69,6 +67,16 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Production transport and browser security defaults.
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31_536_000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
