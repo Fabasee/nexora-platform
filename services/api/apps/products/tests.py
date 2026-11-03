@@ -1,4 +1,5 @@
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from apps.identity.models import NexoraUser
 from .models import Entitlement, Product, ProductMembership
@@ -85,3 +86,29 @@ class ProductAccessServiceTests(TestCase):
 
         with self.assertRaises(ProductAccessDenied):
             ProductAccessService.assert_access(self.user, "day-date")
+
+
+class ProductAccessApiTests(TestCase):
+    def setUp(self):
+        self.user = NexoraUser.objects.create_user()
+        self.product = Product.objects.create(key="dignity", name="Dignity")
+        ProductMembership.objects.create(
+            user=self.user,
+            product=self.product,
+            status=ProductMembership.Status.ACTIVE,
+        )
+        self.client = APIClient()
+
+    def test_product_catalog_requires_authentication(self):
+        response = self.client.get("/api/v1/products/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_authenticated_user_only_sees_active_memberships(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get("/api/v1/products/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [
+            {"key": "dignity", "name": "Dignity", "description": ""},
+        ])
