@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth, initializeAuth, type Auth } from "firebase/auth";
 // Firebase 12 includes this in its React Native runtime entry, but shared TS declarations omit it.
@@ -31,6 +32,11 @@ export function getFirebaseAuth(): Auth {
   if (authInstance) return authInstance;
 
   const app = getFirebaseApp();
+  if (Platform.OS === "web") {
+    authInstance = getAuth(app);
+    return authInstance;
+  }
+
   try {
     authInstance = initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
