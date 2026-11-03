@@ -71,6 +71,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="entitlement",
-            index=models.Index(fields=["user", "product", "feature_key", "status"], name="products_entitlement_lookup_idx"),
+            index=models.Index(fields=["user", "product", "feature_key", "status"], name="prod_entitlement_lookup_idx"),
         ),
     ]
