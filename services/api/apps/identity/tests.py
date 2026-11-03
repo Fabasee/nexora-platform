@@ -77,3 +77,30 @@ class FirebaseIdentityAuthenticationTests(TestCase):
         )
 
         self.assertIsNone(FirebaseIdentityAuthentication().authenticate(request))
+
+from rest_framework.test import APIClient
+
+
+class CurrentAccountApiTests(TestCase):
+    def setUp(self):
+        self.user = NexoraUser.objects.create_user()
+        IdentityProviderAccount.objects.create(
+            user=self.user,
+            provider="firebase",
+            provider_subject="firebase-account-subject",
+        )
+        self.client = APIClient()
+
+    def test_current_account_requires_verified_identity(self):
+        response = self.client.get("/api/v1/account/me/")
+        self.assertEqual(response.status_code, 401)
+
+    def test_current_account_returns_internal_id_and_provider_without_subject(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/v1/account/me/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], str(self.user.pk))
+        self.assertEqual(response.data["status"], "active")
+        self.assertEqual(response.data["providers"][0]["provider"], "firebase")
+        self.assertNotIn("provider_subject", response.data["providers"][0])
