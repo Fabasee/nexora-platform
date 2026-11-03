@@ -59,7 +59,7 @@ class ProductAccessService:
             Q(ends_at__isnull=True) | Q(ends_at__gt=now)
         ).values_list("scope", flat=True)
 
-        if required_scope is None:
+        if not required_scope:
             # An unscoped entitlement grants only the product-wide feature.
             granted = any(scope == {} for scope in grants)
         else:
