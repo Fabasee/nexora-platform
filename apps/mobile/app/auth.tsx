@@ -218,9 +218,26 @@ export default function AuthScreen() {
             {mode === "mfa" && (
               <>
                 <Text style={styles.label}>AUTHENTICATOR</Text>
-                <Text style={styles.mfaHint}>
-                  {mfaFactors.find((factor) => factor.uid === selectedMfaFactorUid)?.displayName || "Nexora authenticator"}
-                </Text>
+                <Text style={styles.mfaHint}>Pilih authenticator yang ingin digunakan:</Text>
+                {mfaFactors.map((factor, index) => {
+                  const selected = factor.uid === selectedMfaFactorUid;
+                  return (
+                    <Pressable
+                      key={factor.uid}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      disabled={busy}
+                      onPress={() => { setSelectedMfaFactorUid(factor.uid); setMfaCode(""); }}
+                      style={[styles.factorOption, selected && styles.factorOptionSelected]}
+                    >
+                      <View style={[styles.factorRadio, selected && styles.factorRadioSelected]} />
+                      <View style={styles.factorCopy}>
+                        <Text style={styles.factorName}>{factor.displayName || `Authenticator ${index + 1}`}</Text>
+                        <Text style={styles.factorMeta}>{factor.enrollmentTime ? `Terdaftar ${new Date(factor.enrollmentTime).toLocaleDateString()}` : "TOTP authenticator"}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
                 <Text style={styles.label}>6-DIGIT CODE</Text>
                 <TextInput
                   value={mfaCode}
@@ -300,6 +317,13 @@ const styles = StyleSheet.create({
   inlineAction: { alignSelf: "center", padding: 12 },
   inlineText: { color: "#42638B", fontSize: 12, fontWeight: "700" },
   mfaHint: { color: "#294C75", fontSize: 12, fontWeight: "800", paddingVertical: 8 },
+  factorOption: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: 11, borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, backgroundColor: "#FFFFFF", paddingHorizontal: 13, paddingVertical: 9, marginTop: 8 },
+  factorOptionSelected: { borderColor: "#294C75", backgroundColor: "#F0F4F9" },
+  factorRadio: { width: 17, height: 17, borderRadius: 9, borderWidth: 1.5, borderColor: "#9AA6B5" },
+  factorRadioSelected: { borderWidth: 5, borderColor: "#294C75" },
+  factorCopy: { flex: 1, gap: 3 },
+  factorName: { color: "#263E5E", fontSize: 11, fontWeight: "800" },
+  factorMeta: { color: "#8794A6", fontSize: 9 },
   switchRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 25 },
   switchHint: { color: "#8290A2", fontSize: 11 },
   switchAction: { color: "#294C75", fontSize: 11, fontWeight: "900" },
