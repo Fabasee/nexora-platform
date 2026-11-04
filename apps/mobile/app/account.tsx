@@ -82,11 +82,14 @@ export default function AccountScreen() {
     setVerificationBusy(true);
     setVerificationNotice("");
     try {
-      if (emailVerified) {
+      if (emailVerified || account?.email_verified) {
         await reload(user);
-        setEmailVerified(user.emailVerified);
-        setVerificationNotice(user.emailVerified
-          ? "Email sudah terverifikasi."
+        const refreshedToken = await user.getIdToken(true);
+        const refreshedAccount = await fetchCurrentAccount(refreshedToken);
+        setAccount(refreshedAccount);
+        setEmailVerified(refreshedAccount.email_verified);
+        setVerificationNotice(refreshedAccount.email_verified
+          ? "Email sudah terverifikasi dan status server telah diperbarui."
           : "Status verifikasi belum berubah. Periksa email Anda.");
       } else {
         await sendVerificationEmail();
@@ -187,7 +190,7 @@ export default function AccountScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Security</Text>
           <InfoRow label="Sign-in method" value="Email and password" />
-          <InfoRow label="Email verification" value={emailVerified ? "Verified" : "Not verified"} />
+          <InfoRow label="Email verification" value={(account?.email_verified ?? emailVerified) ? "Verified" : "Not verified"} />
           <Pressable disabled={verificationBusy} onPress={handleVerification} style={styles.verifyButton}>
             {verificationBusy
               ? <ActivityIndicator color="#FFFFFF" />
@@ -277,6 +280,7 @@ function formatEventType(eventType: string): string {
     case "identity.verification_requested": return "Verification email requested";
     case "identity.password_reset_requested": return "Password reset requested";
     case "identity.session_revoked": return "Session revoked";
+    case "identity.email_verification_confirmed": return "Email verification confirmed";
     case "identity.credential_changed": return "Credential changed";
     default: return "Security activity";
   }
