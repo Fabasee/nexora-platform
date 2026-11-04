@@ -6,7 +6,7 @@ import QRCode from "react-native-qrcode-svg";
 
 import { fetchCurrentAccount, fetchSecurityEvents, fetchIdentitySessions, revokeIdentitySession, type NexoraAccount, type NexoraSecurityEvent, type NexoraIdentitySession } from "../src/lib/api";
 import { useAuth } from "../src/providers/AuthProvider";
-import type { AuthMfaFactor } from "../src/lib/auth-types";
+import type { AuthMfaFactor, TotpEnrollmentDraft } from "../src/lib/auth-types";
 
 export default function AccountScreen() {
   const { user, status, signOut, sendVerificationEmail, getMfaFactors, beginTotpEnrollment, completeTotpEnrollment, cancelTotpEnrollment, removeMfaFactor } = useAuth();
@@ -30,7 +30,7 @@ export default function AccountScreen() {
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaError, setMfaError] = useState("");
   const [mfaNotice, setMfaNotice] = useState("");
-  const [totpDraft, setTotpDraft] = useState<{ secretKey: string } | null>(null);
+  const [totpDraft, setTotpDraft] = useState<TotpEnrollmentDraft | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [mfaCurrentPassword, setMfaCurrentPassword] = useState("");
 
@@ -521,7 +521,6 @@ const styles = StyleSheet.create({
   mfaFactorRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 10 },
   totpSetup: { backgroundColor: "#F6F8FB", borderRadius: 12, padding: 12, marginTop: 10 },
   totpQrFrame: { alignSelf: "center", backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, marginVertical: 8, borderWidth: 1, borderColor: "#E2E8F0" },
-  totpQrFrame: { alignSelf: "center", backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12, marginVertical: 8 },
   totpTitle: { color: "#263E5E", fontSize: 10, fontWeight: "900", marginTop: 8, marginBottom: 7 },
   totpSecret: { color: "#172C4B", backgroundColor: "#E8EEF6", padding: 12, borderRadius: 9, fontSize: 15, fontWeight: "900", letterSpacing: 1.1 },
   totpInput: { minHeight: 46, borderWidth: 1, borderColor: "#DCE4EE", backgroundColor: "#FFFFFF", borderRadius: 10, paddingHorizontal: 12, color: "#172C4B", fontSize: 18, fontWeight: "800", letterSpacing: 5, textAlign: "center" },
