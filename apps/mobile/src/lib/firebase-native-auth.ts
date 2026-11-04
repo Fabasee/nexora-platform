@@ -2,6 +2,7 @@ import { getApps } from "@react-native-firebase/app";
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  getMultiFactorResolver,
   multiFactor,
   onAuthStateChanged,
   sendEmailVerification,
@@ -10,7 +11,9 @@ import {
   signOut,
   TotpMultiFactorGenerator,
   updateProfile,
+  type MultiFactorError,
   type MultiFactorInfo,
+  type MultiFactorResolver,
   type TotpSecret,
   type User,
 } from "@react-native-firebase/auth";
@@ -19,6 +22,7 @@ import type {
   AuthAdapter,
   AuthMfaFactor,
   AuthUser,
+  MfaChallengeRequiredError,
   TotpEnrollmentDraft,
 } from "./auth-types";
 
@@ -27,7 +31,7 @@ type PendingTotpEnrollment = {
   secret: TotpSecret;
 };
 
-let pendingTotpEnrollment: PendingTotpEnrollment | null = null;
+let pendingTotpEnrollment: PendingTotpEnrollment | null = null;\nlet pendingSignInResolver: MultiFactorResolver | null = null;
 
 function toAuthUser(user: User): AuthUser {
   return {
@@ -78,12 +82,30 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
   },
 
   async signIn(email, password) {
-    const credential = await signInWithEmailAndPassword(
-      requireAuth(),
-      email.trim(),
-      password,
-    );
-    return toAuthUser(credential.user);
+    const auth = requireAuth();
+    pendingSignInResolver = null;
+    try {
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password,
+      );
+      return toAuthUser(credential.user);
+    } catch (error) {
+      if ((error as { code?: string })?.code !== "auth/multi-factor-auth-required") {
+        throw error;
+      }
+
+      const resolver = getMultiFactorResolver(auth, error as MultiFactorError);
+      pendingSignInResolver = resolver;
+      const factors = resolver.hints.map((hint) => ({
+        uid: hint.uid,
+        factorId: hint.factorId,
+        displayName: hint.displayName ?? null,
+        enrollmentTime: hint.enrollmentTime ?? null,
+      }));
+      throw new MfaChallengeRequiredError(factors);
+    }
   },
 
   async register(name, email, password) {
@@ -161,6 +183,23 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
     await multiFactor(user).enroll(assertion, displayName.trim() || "Nexora authenticator");
     pendingTotpEnrollment = null;
     await user.getIdToken(true);
+  },
+
+  async completeTotpSignIn(factorUid, verificationCode) {
+    const auth = requireAuth();
+    const resolver = pendingSignInResolver;
+    if (!resolver) throw new Error("MFA_SIGN_IN_CHALLENGE_EXPIRED");
+
+    const factor = resolver.hints.find((hint) => hint.uid === factorUid && hint.factorId === "totp");
+    if (!factor) throw new Error("MFA_FACTOR_NOT_FOUND");
+
+    const normalizedCode = verificationCode.replace(/\\s+/g, "");
+    if (!/^\\d{6}$/.test(normalizedCode)) throw new Error("INVALID_TOTP_CODE");
+
+    const assertion = TotpMultiFactorGenerator.assertionForSignIn(factor.uid, normalizedCode);
+    const credential = await resolver.resolveSignIn(assertion);
+    pendingSignInResolver = null;
+    await credential.user.getIdToken(true);
   },
 
   async removeMfaFactor(factorUid) {
