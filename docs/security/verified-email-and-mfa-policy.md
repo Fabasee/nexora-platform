@@ -24,7 +24,7 @@ The API returns `email_verified`, `mfa_verified`, and `second_factor_type` for t
 
 Use Firebase Authentication with Google Cloud Identity Platform's TOTP MFA capability as the preferred authenticator-app factor. TOTP avoids SMS delivery costs and SIM-swap exposure. Keep a second enrolled factor or a documented account recovery process before making MFA mandatory.
 
-Firebase TOTP MFA requires upgrading the Firebase project to Identity Platform and enabling TOTP. Android/iOS now use React Native Firebase Auth 27.1.0 through Expo Development Client; web retains the Firebase JS SDK adapter. The native client implements TOTP enrollment, TOTP sign-in resolver completion, and factor removal. Expo Go cannot load the native modules. See ADR 0002 and the MFA rollout checklist. The current enrollment UI displays a temporary manual secret; QR rendering is not implemented yet. The native flow has not yet passed device end-to-end tests.
+Firebase TOTP MFA requires upgrading the Firebase project to Identity Platform and enabling TOTP. Android/iOS now use React Native Firebase Auth 27.1.0 through Expo Development Client; web retains the Firebase JS SDK adapter. The native client implements TOTP enrollment, local QR rendering with a manual-secret fallback, TOTP sign-in resolver completion, factor inventory, and factor removal. The QR code is generated on-device; neither the secret nor the `otpauth` URI is sent to a QR service. Expo Go cannot load the native modules. See ADR 0002 and the MFA rollout checklist. The native flow has not yet passed device end-to-end tests.
 
 The app must implement:
 1. Reauthenticate the current user with the current password before enrollment and factor removal.
@@ -33,7 +33,7 @@ The app must implement:
 4. Catch `auth/multi-factor-auth-required` during sign-in, present the available enrolled factor, and complete the resolver challenge before navigating into the signed-in app.
 5. Force-refresh the ID token after enrollment/sign-in and let the API verify the reserved second-factor claim.
 6. Enroll and test a second recovery factor or implement a secure support recovery workflow before requiring MFA for all accounts.
-7. Provide a clear factor-removal flow with recent reauthentication and audit events.
+7. Provide a clear factor-removal flow with recent reauthentication and a trustworthy server-side audit source. Do not accept a client-submitted event as proof that a factor was enrolled or removed.
 
 Do not implement custom TOTP secret storage in the Nexora database. Firebase Identity Platform owns the factor secrets and challenge validation.
 
@@ -41,12 +41,19 @@ Do not implement custom TOTP secret storage in the Nexora database. Firebase Ide
 
 Session revocation uses a scoped authenticated-user throttle of 10 requests per hour. MFA enrollment, factor removal, and recovery must also have abuse controls, provider quotas, and monitoring. DRF throttles are application-level controls and should be complemented by edge/WAF rate limits and a shared production cache.
 
+## MFA factor lifecycle audit boundary
+
+The Django backend currently uses `firebase-admin` for Python. The documented Identity Platform MFA user-management interface is currently supported by the Node.js Admin SDK; the Python Admin SDK exposes `get_user()` but does not provide a supported MFA `enrolledFactors` management/read contract. Therefore, the Django API must not claim it independently verified factor enrollment or removal by querying a Python `UserRecord`.
+
+Until a supported server-side source is integrated, Nexora records successful MFA authentication from the verified ID-token claim only. Factor enrollment/removal audit events remain pending. Acceptable follow-up designs are a verified Google Cloud/Identity Platform audit-log ingestion path or a narrowly scoped Node.js Admin service that reads provider-owned factor state. Any such integration must bind the provider UID to the authenticated Nexora identity, deduplicate events, record only factor metadata (never TOTP secrets), and fail visibly when provider verification is unavailable. A client may show local success feedback, but it cannot create authoritative security audit events.
+
 ## Current limitations
 
 - The backend now recognizes verified Firebase MFA claims, stores MFA state per Nexora session, records MFA authentication events, and exposes an MFA-required permission.
-- The React Native Firebase native adapter, TOTP enrollment UI, sign-in challenge resolver, and factor-removal UI are implemented but not yet device-validated. Enrollment currently uses manual secret entry rather than QR rendering.
+- The React Native Firebase native adapter, local QR/manual TOTP enrollment UI, sign-in challenge resolver, factor inventory, and factor-removal UI are implemented but not yet device-validated.
 - The Firebase project has not been confirmed as upgraded to Identity Platform or configured for TOTP.
 - No recovery codes are generated or stored by Nexora. Do not claim recovery codes are available; alternate-factor and account recovery design remains pending.
+- No authoritative factor-enrollment/removal audit integration exists yet. Do not add client-authored audit events as a substitute.
 - No API endpoint currently applies `VerifiedMFARequired`; sensitive endpoints must opt in deliberately after client enrollment and challenge are tested.
 - MFA is not active for users until the Firebase project configuration and client flows are completed and tested.
 - Product catalog is the first protected resource for verified email; individual product APIs must explicitly adopt the same permission or a stronger policy.
