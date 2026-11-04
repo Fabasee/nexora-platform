@@ -2,16 +2,32 @@ import { getApps } from "@react-native-firebase/app";
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  multiFactor,
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  TotpMultiFactorGenerator,
   updateProfile,
+  type MultiFactorInfo,
+  type TotpSecret,
   type User,
 } from "@react-native-firebase/auth";
 
-import type { AuthAdapter, AuthUser } from "./auth-types";
+import type {
+  AuthAdapter,
+  AuthMfaFactor,
+  AuthUser,
+  TotpEnrollmentDraft,
+} from "./auth-types";
+
+type PendingTotpEnrollment = {
+  userUid: string;
+  secret: TotpSecret;
+};
+
+let pendingTotpEnrollment: PendingTotpEnrollment | null = null;
 
 function toAuthUser(user: User): AuthUser {
   return {
@@ -31,6 +47,21 @@ function requireAuth() {
     );
   }
   return getAuth();
+}
+
+function requireCurrentUser() {
+  const user = requireAuth().currentUser;
+  if (!user) throw new Error("A signed-in Firebase user is required.");
+  return user;
+}
+
+function toMfaFactor(factor: MultiFactorInfo): AuthMfaFactor {
+  return {
+    uid: factor.uid,
+    factorId: factor.factorId,
+    displayName: factor.displayName ?? null,
+    enrollmentTime: factor.enrollmentTime ?? null,
+  };
 }
 
 export const firebaseNativeAuthAdapter: AuthAdapter = {
@@ -84,12 +115,64 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
   },
 
   async sendVerificationEmail() {
-    const user = requireAuth().currentUser;
-    if (!user) throw new Error("No authenticated user is available.");
+    const user = requireCurrentUser();
     await sendEmailVerification(user);
   },
 
+  async getMfaFactors() {
+    const user = requireCurrentUser();
+    return multiFactor(user).enrolledFactors.map(toMfaFactor);
+  },
+
+  async beginTotpEnrollment(): Promise<TotpEnrollmentDraft> {
+    const auth = requireAuth();
+    const user = requireCurrentUser();
+    await user.reload();
+    if (!user.emailVerified) {
+      throw new Error("VERIFIED_EMAIL_REQUIRED");
+    }
+
+    const session = await multiFactor(user).getSession();
+    const secret = await TotpMultiFactorGenerator.generateSecret(session, auth);
+    pendingTotpEnrollment = { userUid: user.uid, secret };
+
+    return {
+      secretKey: secret.secretKey,
+      otpauthUrl: secret.generateQrCodeUrl(user.email ?? user.uid, "Nexora"),
+    };
+  },
+
+  async completeTotpEnrollment(verificationCode, displayName = "Nexora authenticator") {
+    const user = requireCurrentUser();
+    const pending = pendingTotpEnrollment;
+    if (!pending || pending.userUid !== user.uid) {
+      throw new Error("TOTP_ENROLLMENT_EXPIRED");
+    }
+
+    const normalizedCode = verificationCode.replace(/\s+/g, "");
+    if (!/^\d{6}$/.test(normalizedCode)) {
+      throw new Error("INVALID_TOTP_CODE");
+    }
+
+    const assertion = TotpMultiFactorGenerator.assertionForEnrollment(
+      pending.secret,
+      normalizedCode,
+    );
+    await multiFactor(user).enroll(assertion, displayName.trim() || "Nexora authenticator");
+    pendingTotpEnrollment = null;
+    await user.getIdToken(true);
+  },
+
+  async removeMfaFactor(factorUid) {
+    const user = requireCurrentUser();
+    const factor = multiFactor(user).enrolledFactors.find((item) => item.uid === factorUid);
+    if (!factor) throw new Error("MFA_FACTOR_NOT_FOUND");
+    await multiFactor(user).unenroll(factor);
+    if (pendingTotpEnrollment?.userUid === user.uid) pendingTotpEnrollment = null;
+  },
+
   async signOut() {
+    pendingTotpEnrollment = null;
     await signOut(requireAuth());
   },
 };
