@@ -29,13 +29,13 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 - [x] Implement platform-selected native and web Auth adapters for sign-in, registration, password reset, email verification, sign-out, and ID-token retrieval. TOTP operations remain pending.
 - [x] Preserve the web adapter's AsyncStorage persistence and use the native SDK's platform persistence on Android/iOS. Native default-app configuration is required.
 - [x] Implement TOTP enrollment with current-password reauthentication, in-memory secret generation, manual secret display, six-digit verification, and factor enrollment.
-- [ ] Add QR rendering to the enrollment flow; manual secret entry is currently supported.
+- [x] Add local QR rendering to the enrollment flow with manual-secret fallback; QR generation remains on-device.
 - [x] Implement TOTP challenge after `auth/multi-factor-auth-required` and resolve sign-in before app navigation.
 - [ ] Support at least one additional factor or a secure recovery workflow before mandatory MFA.
 - [ ] Confirm Firebase ID token includes a recognized `firebase.sign_in_second_factor` claim after completed MFA.
 - [ ] Run Expo prebuild, Android/iOS development builds, and real-device end-to-end tests after the Firebase native config files are supplied.
 - [x] Require current-password reauthentication before factor removal.
-- [ ] Emit and verify a security audit event for factor removal.
+- [ ] Integrate a provider-confirmed server-side audit source for factor enrollment/removal. Client success callbacks are not authoritative audit evidence.
 
 ## Consequences
 
@@ -53,5 +53,9 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 - Added dynamic iOS framework configuration required by the current React Native Firebase / Firebase Apple SDK toolchain.
 - Added EAS development, preview, and production profiles. Native Firebase client files are git-ignored but included in the mobile EAS archive; Admin service-account credentials remain excluded.
 - CI typecheck and Expo dependency compatibility pass on the implementation commit. Native prebuild/device tests are blocked until the project-specific `google-services.json` and `GoogleService-Info.plist` are supplied.
-- Implemented native TOTP enrollment and challenge resolution, plus factor inventory/removal with current-password reauthentication. QR rendering and recovery are pending.
+- Implemented native TOTP enrollment and challenge resolution, plus factor inventory/removal with current-password reauthentication. QR rendering is local and complete in code; recovery and device validation remain pending.
 - Firebase Identity Platform project configuration, recognized token-claim verification on real devices, and Android/iOS end-to-end tests remain pending. MFA is not active for users.
+
+## Factor lifecycle audit decision (2026-11-05)
+
+Do not emit authoritative `MFA_FACTOR_ENROLLED` or `MFA_FACTOR_REMOVED` Nexora events from mobile callbacks. The Django service currently uses Firebase Admin Python, while the documented Identity Platform MFA user-management interface currently specifies Node.js Admin SDK support. The Python `get_user()` API alone is not evidence that MFA factor inventory can be queried. A provider-confirmed audit integration must be selected and reviewed before adding these event types. Preferred candidates are Identity Platform/Google Cloud audit-log ingestion or a separately isolated Node.js Admin service. Until then, the backend records MFA-authenticated sessions from verified ID-token claims, but not factor lifecycle changes.
