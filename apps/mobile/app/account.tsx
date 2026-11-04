@@ -142,6 +142,10 @@ export default function AccountScreen() {
     );
   }
 
+  const mfaStatus = account?.mfa_verified
+    ? `Aktif pada sesi ini (${account.second_factor_type.toUpperCase()})`
+    : "Belum diverifikasi pada sesi ini";
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -189,6 +193,8 @@ export default function AccountScreen() {
           <Text style={styles.sectionTitle}>Security</Text>
           <InfoRow label="Sign-in method" value="Email and password" />
           <InfoRow label="Email verification" value={(account?.email_verified ?? emailVerified) ? "Verified" : "Not verified"} />
+          <InfoRow label="Multi-factor authentication" value={mfaStatus} />
+          <Text style={styles.sessionIntro}>Status MFA berasal dari klaim token Firebase yang diverifikasi server, bukan dari nilai yang dikirim aplikasi.</Text>
           <Pressable disabled={verificationBusy} onPress={handleVerification} style={styles.verifyButton}>
             {verificationBusy
               ? <ActivityIndicator color="#FFFFFF" />
@@ -242,6 +248,7 @@ export default function AccountScreen() {
                     {session.is_active ? " · Active" : " · Revoked"}
                   </Text>
                   <Text style={styles.eventMeta}>Last activity: {new Date(session.last_seen_at).toLocaleString()}</Text>
+                  <Text style={styles.eventMeta}>MFA: {session.mfa_verified ? session.second_factor_type.toUpperCase() : "Not verified"}</Text>
                   <Text numberOfLines={2} style={styles.eventMeta}>{session.user_agent || "Unknown device information"}</Text>
                   {!!session.source_ip && <Text style={styles.eventMeta}>IP: {session.source_ip}</Text>}
                 </View>
@@ -280,6 +287,8 @@ function formatEventType(eventType: string): string {
     case "identity.session_revoked": return "Session revoked";
     case "identity.email_verification_confirmed": return "Email verification confirmed";
     case "identity.credential_changed": return "Credential changed";
+    case "identity.auth_context_changed": return "Sign-in context changed";
+    case "identity.mfa_authenticated": return "Multi-factor authentication completed";
     default: return "Security activity";
   }
 }
