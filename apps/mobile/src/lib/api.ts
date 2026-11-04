@@ -70,3 +70,28 @@ export async function fetchCurrentAccount(idToken: string): Promise<NexoraAccoun
   }
   return payload;
 }
+
+
+export type NexoraSecurityEvent = {
+  id: string;
+  event_type: string;
+  occurred_at: string;
+  provider: string;
+  source_ip: string | null;
+  user_agent: string;
+};
+
+export async function fetchSecurityEvents(idToken: string): Promise<NexoraSecurityEvent[]> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/account/security-events/`, {
+    method: "GET",
+    headers: { Accept: "application/json", Authorization: `Bearer ${idToken}` },
+  });
+  if (!response.ok) {
+    throw new ApiError("Unable to load Nexora security events.", response.status);
+  }
+  const payload = (await response.json()) as { results?: NexoraSecurityEvent[] };
+  if (!payload || !Array.isArray(payload.results)) {
+    throw new ApiError("The Nexora API returned an invalid security event response.", response.status);
+  }
+  return payload.results;
+}
