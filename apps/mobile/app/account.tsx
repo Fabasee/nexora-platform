@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, Text
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
+import QRCode from "react-native-qrcode-svg";
 
 import { fetchCurrentAccount, fetchSecurityEvents, fetchIdentitySessions, revokeIdentitySession, type NexoraAccount, type NexoraSecurityEvent, type NexoraIdentitySession } from "../src/lib/api";
 import { useAuth } from "../src/providers/AuthProvider";
@@ -356,7 +357,7 @@ export default function AccountScreen() {
                   <Text style={styles.sessionIntro}>
                     Account: {user.email ?? user.uid} · Issuer: Nexora · Type: Time-based (6 digits, 30 seconds).
                   </Text>
-                  <Text style={styles.totpTitle}>2. Enter the 6-digit code</Text>
+                  <Text style={styles.totpTitle}>3. Enter the 6-digit code</Text>
                   <TextInput
                     value={totpCode}
                     onChangeText={(value) => setTotpCode(value.replace(/\D/g, "").slice(0, 6))}
@@ -519,6 +520,7 @@ const styles = StyleSheet.create({
   disabledButton: { opacity: 0.45 },
   mfaFactorRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 10 },
   totpSetup: { backgroundColor: "#F6F8FB", borderRadius: 12, padding: 12, marginTop: 10 },
+  totpQrFrame: { alignSelf: "center", backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, marginVertical: 8, borderWidth: 1, borderColor: "#E2E8F0" },
   totpQrFrame: { alignSelf: "center", backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12, marginVertical: 8 },
   totpTitle: { color: "#263E5E", fontSize: 10, fontWeight: "900", marginTop: 8, marginBottom: 7 },
   totpSecret: { color: "#172C4B", backgroundColor: "#E8EEF6", padding: 12, borderRadius: 9, fontSize: 15, fontWeight: "900", letterSpacing: 1.1 },
