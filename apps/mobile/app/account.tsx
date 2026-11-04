@@ -39,6 +39,10 @@ export default function AccountScreen() {
     if (user) setEmailVerified(user.emailVerified);
   }, [user]);
 
+  useEffect(() => () => {
+    cancelTotpEnrollment();
+  }, []);
+
   useEffect(() => {
     let active = true;
     async function loadAccount() {
@@ -251,9 +255,6 @@ export default function AccountScreen() {
   const mfaStatus = account?.mfa_verified
     ? `Aktif pada sesi ini (${account.second_factor_type.toUpperCase()})`
     : "Belum diverifikasi pada sesi ini";
-  const totpOtpAuthUri = totpDraft
-    ? `otpauth://totp/${encodeURIComponent(`Nexora:${user.email ?? user.uid}`)}?secret=${encodeURIComponent(totpDraft.secretKey)}&issuer=Nexora&algorithm=SHA1&digits=6&period=30`
-    : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -347,7 +348,7 @@ export default function AccountScreen() {
                 <View style={styles.totpSetup}>
                   <Text style={styles.totpTitle}>1. Scan this QR code with your authenticator</Text>
                   <View style={styles.totpQrFrame}>
-                    {totpOtpAuthUri ? <QRCode value={totpOtpAuthUri} size={196} backgroundColor="#FFFFFF" color="#172C4B" /> : null}
+                    <QRCode value={totpDraft.qrCodeUrl} size={196} backgroundColor="#FFFFFF" color="#172C4B" />
                   </View>
                   <Text style={styles.sessionIntro}>
                     QR dibuat secara lokal di perangkat. Jangan bagikan atau screenshot QR/secret ini. Jika aplikasi authenticator tidak dapat memindai QR, masukkan secret manual di bawah.
