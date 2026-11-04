@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
-import { reload } from "firebase/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fetchCurrentAccount, fetchSecurityEvents, fetchIdentitySessions, revokeIdentitySession, type NexoraAccount, type NexoraSecurityEvent, type NexoraIdentitySession } from "../src/lib/api";
@@ -82,7 +81,7 @@ export default function AccountScreen() {
     setVerificationBusy(true);
     setVerificationNotice("");
     try {
-      await reload(user);
+      await user.reload();
       const refreshedToken = await user.getIdToken(true);
       const refreshedAccount = await fetchCurrentAccount(refreshedToken);
       setAccount(refreshedAccount);
