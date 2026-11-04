@@ -106,6 +106,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       getMfaFactors,
       beginTotpEnrollment,
       completeTotpEnrollment,
+      completeTotpSignIn,
       removeMfaFactor,
       signOut,
     }}>
