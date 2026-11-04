@@ -15,7 +15,10 @@ export default function AccountScreen() {
   const [account, setAccount] = useState<NexoraAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);\n  const [securityEvents, setSecurityEvents] = useState<NexoraSecurityEvent[]>([]);\n  const [eventsLoading, setEventsLoading] = useState(true);\n  const [eventsError, setEventsError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [securityEvents, setSecurityEvents] = useState<NexoraSecurityEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState("");
 
   useEffect(() => {
     if (user) setEmailVerified(user.emailVerified);
