@@ -32,7 +32,7 @@ function friendlyAuthError(error: unknown): string {
 }
 
 export default function AuthScreen() {
-  const { signIn, register, resetPassword, completeTotpSignIn, status } = useAuth();
+  const { signIn, register, resetPassword, completeTotpSignIn, cancelMfaSignInChallenge, status } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -103,6 +103,7 @@ export default function AuthScreen() {
       if (requestError instanceof MfaChallengeRequiredError) {
         const totpFactors = requestError.factors.filter((factor) => factor.factorId === "totp");
         if (totpFactors.length === 0) {
+          cancelMfaSignInChallenge();
           setError("Akun ini meminta faktor kedua yang belum didukung aplikasi. Gunakan metode pemulihan atau hubungi administrator.");
         } else {
           setMfaFactors(totpFactors);
@@ -118,7 +119,13 @@ export default function AuthScreen() {
           : code === "MFA_SIGN_IN_CHALLENGE_EXPIRED"
             ? "Tantangan MFA kedaluwarsa. Silakan masuk kembali."
             : friendlyAuthError(requestError));
-        if (code === "MFA_SIGN_IN_CHALLENGE_EXPIRED") setMode("signin");
+        if (code === "MFA_SIGN_IN_CHALLENGE_EXPIRED") {
+          cancelMfaSignInChallenge();
+          setMode("signin");
+          setMfaFactors([]);
+          setSelectedMfaFactorUid("");
+          setMfaCode("");
+        }
       }
     } finally {
       setBusy(false);
@@ -126,6 +133,7 @@ export default function AuthScreen() {
   }
 
   function changeMode(nextMode: Mode) {
+    if (mode === "mfa") cancelMfaSignInChallenge();
     setMode(nextMode);
     setError("");
     setNotice("");
