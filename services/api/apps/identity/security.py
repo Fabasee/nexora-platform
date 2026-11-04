@@ -31,3 +31,8 @@ def authentication_dedupe_key(user_id, provider, authenticated_at):
 def auth_context_dedupe_key(session_id):
     raw = f"auth-context-changed:{session_id}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def mfa_authentication_dedupe_key(session_id):
+    raw = f"mfa-authenticated:{session_id}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
