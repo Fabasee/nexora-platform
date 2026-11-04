@@ -10,6 +10,8 @@ from apps.integrations.firebase_admin.app import (
     FirebaseConfigurationError,
 )
 from .services import IdentityAccessDenied, IdentityService, VerifiedIdentity
+from .models import SecurityEvent
+from .security import authentication_dedupe_key, record_security_event
 
 
 class FirebaseIdentityAuthentication(BaseAuthentication):
@@ -62,6 +64,16 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
             )
         except IdentityAccessDenied:
             raise AuthenticationFailed("This Nexora account is not active.") from None
+
+        if authenticated_at is not None:
+            dedupe_key = authentication_dedupe_key(user.pk, "firebase", authenticated_at)
+            record_security_event(
+                user=user,
+                event_type=SecurityEvent.EventType.AUTHENTICATED,
+                request=request,
+                provider="firebase",
+                dedupe_key=dedupe_key,
+            )
 
         return user, None
 
