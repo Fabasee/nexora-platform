@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.test import APIRequestFactory
+from rest_framework.test import APIClient, APIRequestFactory
 
 from .authentication import FirebaseIdentityAuthentication
 
@@ -92,8 +92,6 @@ class FirebaseIdentityAuthenticationTests(TestCase):
         )
 
         self.assertIsNone(FirebaseIdentityAuthentication().authenticate(request))
-
-from rest_framework.test import APIClient
 
 
 class CurrentAccountApiTests(TestCase):
@@ -185,7 +183,7 @@ class IdentitySessionApiTests(TestCase):
         self.session = IdentitySession.objects.create(
             provider_account=self.provider,
             authenticated_at=timezone.now(),
-            last_seen_at=__import__("django.utils.timezone", fromlist=["now"]).now(),
+            last_seen_at=timezone.now(),
             user_agent="Nexora test device",
         )
         self.client = APIClient()
@@ -243,6 +241,7 @@ class RevokedIdentitySessionTests(TestCase):
         verify_token.return_value = {
             "uid": "revoked-session-subject",
             "auth_time": 1_798_000_000,
+            "email_verified": False,
         }
         request = APIRequestFactory().get(
             "/api/v1/private/",
