@@ -18,11 +18,12 @@ import {
   type User,
 } from "@react-native-firebase/auth";
 
+import { MfaChallengeRequiredError } from "./auth-types";
+
 import type {
   AuthAdapter,
   AuthMfaFactor,
   AuthUser,
-  MfaChallengeRequiredError,
   TotpEnrollmentDraft,
 } from "./auth-types";
 
