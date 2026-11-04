@@ -72,6 +72,7 @@ class SecurityEvent(models.Model):
         VERIFICATION_REQUESTED = "identity.verification_requested", "Verification requested"
         PASSWORD_RESET_REQUESTED = "identity.password_reset_requested", "Password reset requested"
         SESSION_REVOKED = "identity.session_revoked", "Session revoked"
+        EMAIL_VERIFICATION_CONFIRMED = "identity.email_verification_confirmed", "Email verification confirmed"
         CREDENTIAL_CHANGED = "identity.credential_changed", "Credential changed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -113,6 +114,7 @@ class IdentitySession(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField()
     revoked_at = models.DateTimeField(null=True, blank=True)
+    email_verified = models.BooleanField(default=False)
     source_ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=512, blank=True)
 
