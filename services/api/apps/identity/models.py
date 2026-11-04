@@ -74,6 +74,7 @@ class SecurityEvent(models.Model):
         SESSION_REVOKED = "identity.session_revoked", "Session revoked"
         EMAIL_VERIFICATION_CONFIRMED = "identity.email_verification_confirmed", "Email verification confirmed"
         CREDENTIAL_CHANGED = "identity.credential_changed", "Credential changed"
+        AUTH_CONTEXT_CHANGED = "identity.auth_context_changed", "Authentication context changed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
