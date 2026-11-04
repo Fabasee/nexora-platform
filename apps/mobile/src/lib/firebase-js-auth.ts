@@ -14,10 +14,10 @@ import type { AuthAdapter, AuthUser } from "./auth-types";
 
 function toAuthUser(user: User): AuthUser {
   return {
-    uid: user.uid,
-    email: user.email,
-    emailVerified: user.emailVerified,
-    displayName: user.displayName,
+    get uid() { return user.uid; },
+    get email() { return user.email; },
+    get emailVerified() { return user.emailVerified; },
+    get displayName() { return user.displayName; },
     getIdToken: (forceRefresh = false) => user.getIdToken(forceRefresh),
     reload: () => user.reload(),
   };
