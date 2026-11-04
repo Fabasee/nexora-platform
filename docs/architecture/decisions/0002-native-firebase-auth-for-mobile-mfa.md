@@ -17,7 +17,7 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 1. Keep Firebase Authentication with Identity Platform as the identity provider and Nexora's internal UUID as the canonical account anchor.
 2. For Android and iOS, adopt React Native Firebase Auth 27.1.0 as the native authentication adapter. Its published peer ranges include Expo >=47 and React Native >=0.60; Expo SDK 57 / React Native 0.86.3 are within those declared ranges.
 3. Use Expo Development Client 57.0.20 and Expo Build Properties 57.0.22 for the SDK 57 project. Configure React Native Firebase app/auth plugins and dynamic iOS frameworks; do not claim Expo Go support for native MFA.
-4. Keep the current Firebase JS SDK implementation unchanged until the native adapter passes the same auth contract tests and a device-level MFA enrollment/sign-in test.
+4. Keep the Firebase JS SDK adapter for web and select the React Native Firebase adapter for Android/iOS. The native adapter now implements the shared auth contract and TOTP operations; device-level regression remains required.
 5. If the app ships web, retain a platform-specific web adapter using the Firebase JS SDK. Do not mix JS SDK and native SDK user instances within one platform runtime.
 6. Preserve the existing backend token contract: Firebase ID token in Bearer authorization, verified with Firebase Admin and revocation checking. The backend remains provider-neutral and does not store TOTP secrets.
 7. Do not require MFA globally until a second factor and a tested recovery path are available.
@@ -28,12 +28,14 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 - [x] Add Expo Development Client, EAS development profile, config plugins, and ignored native Firebase client config paths. Native app files still need to be supplied locally/EAS.
 - [x] Implement platform-selected native and web Auth adapters for sign-in, registration, password reset, email verification, sign-out, and ID-token retrieval. TOTP operations remain pending.
 - [x] Preserve the web adapter's AsyncStorage persistence and use the native SDK's platform persistence on Android/iOS. Native default-app configuration is required.
-- [ ] Implement TOTP enrollment: recent reauthentication, generate secret, show QR and manual secret, verify initial code, then enroll.
-- [ ] Implement TOTP challenge after `auth/multi-factor-auth-required` and resolve sign-in before app navigation.
+- [x] Implement TOTP enrollment with current-password reauthentication, in-memory secret generation, manual secret display, six-digit verification, and factor enrollment.
+- [ ] Add QR rendering to the enrollment flow; manual secret entry is currently supported.
+- [x] Implement TOTP challenge after `auth/multi-factor-auth-required` and resolve sign-in before app navigation.
 - [ ] Support at least one additional factor or a secure recovery workflow before mandatory MFA.
 - [ ] Confirm Firebase ID token includes a recognized `firebase.sign_in_second_factor` claim after completed MFA.
 - [ ] Run Expo prebuild, Android/iOS development builds, and real-device end-to-end tests after the Firebase native config files are supplied.
-- [ ] Verify factor removal requires recent reauthentication and emits a security audit event.
+- [x] Require current-password reauthentication before factor removal.
+- [ ] Emit and verify a security audit event for factor removal.
 
 ## Consequences
 
@@ -51,4 +53,5 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 - Added dynamic iOS framework configuration required by the current React Native Firebase / Firebase Apple SDK toolchain.
 - Added EAS development, preview, and production profiles. Native Firebase client files are git-ignored but included in the mobile EAS archive; Admin service-account credentials remain excluded.
 - CI typecheck and Expo dependency compatibility pass on the implementation commit. Native prebuild/device tests are blocked until the project-specific `google-services.json` and `GoogleService-Info.plist` are supplied.
-- TOTP enrollment, MFA sign-in resolver UI, recovery, factor management, and device-level validation are not implemented yet. MFA is not active.
+- Implemented native TOTP enrollment and challenge resolution, plus factor inventory/removal with current-password reauthentication. QR rendering and recovery are pending.
+- Firebase Identity Platform project configuration, recognized token-claim verification on real devices, and Android/iOS end-to-end tests remain pending. MFA is not active for users.
