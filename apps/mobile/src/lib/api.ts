@@ -29,21 +29,12 @@ function getApiBaseUrl(): string {
   return normalized;
 }
 
-export async function fetchAccessibleProducts(
-  idToken: string,
-): Promise<NexoraProduct[]> {
+export async function fetchAccessibleProducts(idToken: string): Promise<NexoraProduct[]> {
   const response = await fetch(`${getApiBaseUrl()}/api/v1/products/`, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
+    headers: { Accept: "application/json", Authorization: `Bearer ${idToken}` },
   });
-
-  if (!response.ok) {
-    throw new ApiError("Unable to load Nexora products.", response.status);
-  }
-
+  if (!response.ok) throw new ApiError("Unable to load Nexora products.", response.status);
   const payload = (await response.json()) as ProductListResponse;
   if (!payload || !Array.isArray(payload.results)) {
     throw new ApiError("The Nexora API returned an invalid response.", response.status);
@@ -55,6 +46,8 @@ export type NexoraAccount = {
   id: string;
   status: "active" | "suspended" | "deactivated";
   email_verified: boolean;
+  mfa_verified: boolean;
+  second_factor_type: "phone" | "totp" | "";
   created_at: string;
   providers: { provider: string; last_authenticated_at: string | null }[];
 };
@@ -66,12 +59,17 @@ export async function fetchCurrentAccount(idToken: string): Promise<NexoraAccoun
   });
   if (!response.ok) throw new ApiError("Unable to load Nexora account.", response.status);
   const payload = (await response.json()) as NexoraAccount;
-  if (!payload || typeof payload.id !== "string" || !Array.isArray(payload.providers)) {
+  if (
+    !payload
+    || typeof payload.id !== "string"
+    || typeof payload.email_verified !== "boolean"
+    || typeof payload.mfa_verified !== "boolean"
+    || !Array.isArray(payload.providers)
+  ) {
     throw new ApiError("The Nexora API returned an invalid account response.", response.status);
   }
   return payload;
 }
-
 
 export type NexoraSecurityEvent = {
   id: string;
@@ -87,16 +85,13 @@ export async function fetchSecurityEvents(idToken: string): Promise<NexoraSecuri
     method: "GET",
     headers: { Accept: "application/json", Authorization: `Bearer ${idToken}` },
   });
-  if (!response.ok) {
-    throw new ApiError("Unable to load Nexora security events.", response.status);
-  }
+  if (!response.ok) throw new ApiError("Unable to load Nexora security events.", response.status);
   const payload = (await response.json()) as { results?: NexoraSecurityEvent[] };
   if (!payload || !Array.isArray(payload.results)) {
     throw new ApiError("The Nexora API returned an invalid security event response.", response.status);
   }
   return payload.results;
 }
-
 
 export type NexoraIdentitySession = {
   id: string;
@@ -107,6 +102,8 @@ export type NexoraIdentitySession = {
   revoked_at: string | null;
   is_active: boolean;
   is_current: boolean;
+  mfa_verified: boolean;
+  second_factor_type: "phone" | "totp" | "";
   source_ip: string | null;
   user_agent: string;
 };
@@ -129,10 +126,7 @@ export async function revokeIdentitySession(idToken: string, sessionId: string):
     `${getApiBaseUrl()}/api/v1/account/sessions/${encodeURIComponent(sessionId)}/revoke/`,
     {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
+      headers: { Accept: "application/json", Authorization: `Bearer ${idToken}` },
     },
   );
   if (!response.ok) throw new ApiError("Unable to revoke Nexora session.", response.status);
