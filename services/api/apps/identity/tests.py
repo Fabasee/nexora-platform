@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase\nfrom django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed\nfrom rest_framework.test import APIRequestFactory
 
 from .authentication import FirebaseIdentityAuthentication
@@ -179,7 +179,7 @@ class IdentitySessionApiTests(TestCase):
         )
         self.session = IdentitySession.objects.create(
             provider_account=self.provider,
-            authenticated_at=__import__("django.utils.timezone", fromlist=["now"]).now(),
+            authenticated_at=timezone.now(),
             last_seen_at=__import__("django.utils.timezone", fromlist=["now"]).now(),
             user_agent="Nexora test device",
         )
