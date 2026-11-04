@@ -188,7 +188,7 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
   },
 
   async completeTotpSignIn(factorUid, verificationCode) {
-    const auth = requireAuth();
+    requireAuth();
     const resolver = pendingSignInResolver;
     if (!resolver) throw new Error("MFA_SIGN_IN_CHALLENGE_EXPIRED");
 
@@ -214,6 +214,7 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
 
   async signOut() {
     pendingTotpEnrollment = null;
+    pendingSignInResolver = null;
     await signOut(requireAuth());
   },
 };
