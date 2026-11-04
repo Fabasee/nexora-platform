@@ -98,3 +98,40 @@ class SecurityEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type}:{self.user_id}"
+
+
+class IdentitySession(models.Model):
+    """Server-side session keyed to a verified provider authentication time."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    provider_account = models.ForeignKey(
+        IdentityProviderAccount,
+        on_delete=models.PROTECT,
+        related_name="sessions",
+    )
+    authenticated_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    source_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+
+    class Meta:
+        db_table = "identity_session"
+        ordering = ("-last_seen_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("provider_account", "authenticated_at"),
+                name="identity_session_auth_time_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=("provider_account", "revoked_at"), name="identity_session_active_idx"),
+        ]
+
+    @property
+    def is_active(self):
+        return self.revoked_at is None
+
+    def __str__(self):
+        return f"{self.provider_account.user_id}:{self.id}"
