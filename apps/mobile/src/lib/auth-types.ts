@@ -10,6 +10,7 @@ export type AuthUser = {
 export type AuthUnsubscribe = () => void;
 
 export type AuthAdapter = {
+  isConfigured: () => boolean;
   subscribe: (
     onUser: (user: AuthUser | null) => void,
     onError: (error: Error) => void,
