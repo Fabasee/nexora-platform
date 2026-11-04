@@ -23,10 +23,10 @@ type AuthContextValue = {
   resetPassword: (email: string) => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
   getMfaFactors: () => Promise<AuthMfaFactor[]>;
-  beginTotpEnrollment: () => Promise<TotpEnrollmentDraft>;
+  beginTotpEnrollment: (currentPassword: string) => Promise<TotpEnrollmentDraft>;
   completeTotpEnrollment: (verificationCode: string, displayName?: string) => Promise<void>;
   completeTotpSignIn: (factorUid: string, verificationCode: string) => Promise<void>;
-  removeMfaFactor: (factorUid: string) => Promise<void>;
+  removeMfaFactor: (factorUid: string, currentPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const getMfaFactors = async () => firebaseAuthAdapter.getMfaFactors();
 
-  const beginTotpEnrollment = async () => firebaseAuthAdapter.beginTotpEnrollment();
+  const beginTotpEnrollment = async (currentPassword: string) => firebaseAuthAdapter.beginTotpEnrollment(currentPassword);
 
   const completeTotpEnrollment = async (verificationCode: string, displayName?: string) => {
     await firebaseAuthAdapter.completeTotpEnrollment(verificationCode, displayName);
@@ -87,8 +87,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await firebaseAuthAdapter.completeTotpSignIn(factorUid, verificationCode);
   };
 
-  const removeMfaFactor = async (factorUid: string) => {
-    await firebaseAuthAdapter.removeMfaFactor(factorUid);
+  const removeMfaFactor = async (factorUid: string, currentPassword: string) => {
+    await firebaseAuthAdapter.removeMfaFactor(factorUid, currentPassword);
   };
 
   const signOut = async () => {
