@@ -6,8 +6,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import { isFirebaseConfigured } from "../lib/firebase";
-import { firebaseJsAuthAdapter } from "../lib/firebase-js-auth";
+import { firebaseAuthAdapter } from "../lib/firebase-auth-adapter";
 import type { AuthUser } from "../lib/auth-types";
 
 type AuthStatus = "loading" | "signed-in" | "signed-out" | "unconfigured" | "error";
@@ -29,13 +28,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>("loading");
 
   useEffect(() => {
-    if (!isFirebaseConfigured()) {
+    if (!firebaseAuthAdapter.isConfigured()) {
       setStatus("unconfigured");
       return;
     }
 
     try {
-      return firebaseJsAuthAdapter.subscribe(
+      return firebaseAuthAdapter.subscribe(
         (nextUser) => {
           setUser(nextUser);
           setStatus(nextUser ? "signed-in" : "signed-out");
@@ -52,23 +51,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await firebaseJsAuthAdapter.signIn(email, password);
+    await firebaseAuthAdapter.signIn(email, password);
   };
 
   const register = async (name: string, email: string, password: string) => {
-    await firebaseJsAuthAdapter.register(name, email, password);
+    await firebaseAuthAdapter.register(name, email, password);
   };
 
   const resetPassword = async (email: string) => {
-    await firebaseJsAuthAdapter.resetPassword(email);
+    await firebaseAuthAdapter.resetPassword(email);
   };
 
   const sendVerificationEmail = async () => {
-    await firebaseJsAuthAdapter.sendVerificationEmail();
+    await firebaseAuthAdapter.sendVerificationEmail();
   };
 
   const signOut = async () => {
-    await firebaseJsAuthAdapter.signOut();
+    await firebaseAuthAdapter.signOut();
   };
 
   return (
