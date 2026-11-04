@@ -17,6 +17,7 @@ class CurrentAccountView(APIView):
         return Response({
             "id": str(user.pk),
             "status": user.status,
+            "email_verified": getattr(request, "nexora_email_verified", False),
             "created_at": user.created_at,
             "providers": list(providers),
         })
@@ -79,6 +80,8 @@ class IdentitySessionListView(APIView):
 
 class IdentitySessionRevokeView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "session_revoke"
 
     def post(self, request, session_id):
         session = get_object_or_404(
