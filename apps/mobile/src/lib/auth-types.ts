@@ -43,6 +43,7 @@ export type AuthAdapter = {
   completeTotpEnrollment: (verificationCode: string, displayName?: string) => Promise<void>;
   cancelTotpEnrollment: () => void;
   completeTotpSignIn: (factorUid: string, verificationCode: string) => Promise<void>;
+  cancelMfaSignInChallenge: () => void;
   removeMfaFactor: (factorUid: string, currentPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
