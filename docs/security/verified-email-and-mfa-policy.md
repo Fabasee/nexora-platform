@@ -24,7 +24,7 @@ The API returns `email_verified`, `mfa_verified`, and `second_factor_type` for t
 
 Use Firebase Authentication with Google Cloud Identity Platform's TOTP MFA capability as the preferred authenticator-app factor. TOTP avoids SMS delivery costs and SIM-swap exposure. Keep a second enrolled factor or a documented account recovery process before making MFA mandatory.
 
-Firebase's documented TOTP MFA flow uses the modular Firebase JavaScript SDK and requires upgrading the Firebase project to Identity Platform with TOTP enabled. The Expo app already uses the Firebase JS SDK, but the exact TOTP enrollment and challenge flow must pass a native Expo development-build proof of concept before production rollout. Expo Go alone is not sufficient evidence for validating native production behavior.
+Firebase's documented TOTP MFA flow uses the modular Firebase JavaScript SDK and requires upgrading the Firebase project to Identity Platform with TOTP enabled. The current Expo app uses the Firebase JS SDK. For Android and iOS, the selected implementation path is a deliberate migration to React Native Firebase Auth plus Expo Development Client, after confirming package compatibility with the repository's Expo SDK and React Native versions. React Native Firebase exposes native MFA APIs, including TOTP. Expo Go cannot load its native modules. See ADR 0002 and the MFA rollout checklist. The existing JS SDK auth adapter remains in place until the native adapter passes end-to-end regression tests. Expo Go alone is not sufficient evidence for validating native production behavior.
 
 The app must implement:
 1. Reauthenticate the current user before enrollment, factor removal, or other sensitive MFA changes.
@@ -44,7 +44,7 @@ Session revocation uses a scoped authenticated-user throttle of 10 requests per 
 ## Current limitations
 
 - The backend now recognizes verified Firebase MFA claims, stores MFA state per Nexora session, records MFA authentication events, and exposes an MFA-required permission.
-- The Expo enrollment and sign-in challenge UI is not implemented yet.
+- The mobile native Firebase Auth adapter migration, TOTP enrollment UI, and sign-in challenge UI are not implemented yet.
 - The Firebase project has not been confirmed as upgraded to Identity Platform or configured for TOTP.
 - No recovery codes are generated or stored by Nexora. Do not claim recovery codes are available; recovery-factor and account recovery design remains pending.
 - No API endpoint currently applies `VerifiedMFARequired`; sensitive endpoints must opt in deliberately after client enrollment and challenge are tested.
