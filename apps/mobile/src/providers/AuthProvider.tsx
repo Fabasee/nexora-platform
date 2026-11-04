@@ -7,7 +7,11 @@ import {
 } from "react";
 
 import { firebaseAuthAdapter } from "../lib/firebase-auth-adapter";
-import type { AuthUser } from "../lib/auth-types";
+import type {
+  AuthMfaFactor,
+  AuthUser,
+  TotpEnrollmentDraft,
+} from "../lib/auth-types";
 
 type AuthStatus = "loading" | "signed-in" | "signed-out" | "unconfigured" | "error";
 
@@ -18,6 +22,10 @@ type AuthContextValue = {
   register: (name: string, email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
+  getMfaFactors: () => Promise<AuthMfaFactor[]>;
+  beginTotpEnrollment: () => Promise<TotpEnrollmentDraft>;
+  completeTotpEnrollment: (verificationCode: string, displayName?: string) => Promise<void>;
+  removeMfaFactor: (factorUid: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -66,6 +74,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await firebaseAuthAdapter.sendVerificationEmail();
   };
 
+  const getMfaFactors = async () => firebaseAuthAdapter.getMfaFactors();
+
+  const beginTotpEnrollment = async () => firebaseAuthAdapter.beginTotpEnrollment();
+
+  const completeTotpEnrollment = async (verificationCode: string, displayName?: string) => {
+    await firebaseAuthAdapter.completeTotpEnrollment(verificationCode, displayName);
+  };
+
+  const removeMfaFactor = async (factorUid: string) => {
+    await firebaseAuthAdapter.removeMfaFactor(factorUid);
+  };
+
   const signOut = async () => {
     await firebaseAuthAdapter.signOut();
   };
@@ -78,6 +98,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       register,
       resetPassword,
       sendVerificationEmail,
+      getMfaFactors,
+      beginTotpEnrollment,
+      completeTotpEnrollment,
+      removeMfaFactor,
       signOut,
     }}>
       {children}
