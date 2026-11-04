@@ -12,9 +12,10 @@ This checklist is an operator-run prerequisite. Do not enable mandatory MFA unti
 - [x] Clear the in-memory enrollment secret on completion, cancellation, and sign-out.
 - [x] Local QR code rendering using `react-native-qrcode-svg` + `react-native-svg`; manual secret remains available as fallback.
 - [ ] Recovery codes, alternate-factor recovery, and account recovery workflow.
+- [x] Local QR rendering and manual-secret fallback; QR data is generated on-device and must never be sent to an external QR service.
 - [ ] Android/iOS development builds and end-to-end device validation.
 
-The completed items above describe code implementation only; they do not mean the Firebase project is configured or that MFA is live for users.
+The completed items above describe code implementation only; they do not mean the Firebase project is configured or that MFA is live for users. The QR checklist item is complete in the client, but still requires real-device verification.
 
 ## Firebase project prerequisites
 
@@ -60,3 +61,7 @@ The completed items above describe code implementation only; they do not mean th
 - [ ] Configure shared cache and edge rate limits before production.
 - [ ] Monitor MFA enrollment, challenge failures, recovery, factor removal, and suspicious session churn.
 - [ ] Keep MFA optional until recovery and production abuse controls are validated.
+
+## Server-side audit implementation note
+
+The current Django backend uses the Firebase Admin Python SDK. Identity Platform's documented MFA user-management interface currently specifies the Node.js Admin SDK; the Python SDK's `get_user()` must not be assumed to expose a supported `multiFactor.enrolledFactors` contract. Until a supported provider-side audit source is integrated, factor enrollment/removal events are not authoritative Nexora security events. Keep this rollout gate open rather than emitting events based only on a client success callback.
