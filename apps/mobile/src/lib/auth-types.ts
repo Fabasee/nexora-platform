@@ -16,6 +16,13 @@ export type AuthMfaFactor = {
   enrollmentTime: string | null;
 };
 
+export class MfaChallengeRequiredError extends Error {
+  constructor(public readonly factors: AuthMfaFactor[]) {
+    super("A second factor is required to complete sign-in.");
+    this.name = "MfaChallengeRequiredError";
+  }
+}
+
 export type TotpEnrollmentDraft = {
   secretKey: string;
   otpauthUrl: string;
@@ -34,6 +41,7 @@ export type AuthAdapter = {
   getMfaFactors: () => Promise<AuthMfaFactor[]>;
   beginTotpEnrollment: () => Promise<TotpEnrollmentDraft>;
   completeTotpEnrollment: (verificationCode: string, displayName?: string) => Promise<void>;
+  completeTotpSignIn: (factorUid: string, verificationCode: string) => Promise<void>;
   removeMfaFactor: (factorUid: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
