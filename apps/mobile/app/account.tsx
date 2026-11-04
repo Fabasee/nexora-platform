@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import QRCode from "react-native-qrcode-svg";
 
 import { fetchCurrentAccount, fetchSecurityEvents, fetchIdentitySessions, revokeIdentitySession, type NexoraAccount, type NexoraSecurityEvent, type NexoraIdentitySession } from "../src/lib/api";
 import { useAuth } from "../src/providers/AuthProvider";
@@ -249,6 +250,9 @@ export default function AccountScreen() {
   const mfaStatus = account?.mfa_verified
     ? `Aktif pada sesi ini (${account.second_factor_type.toUpperCase()})`
     : "Belum diverifikasi pada sesi ini";
+  const totpOtpAuthUri = totpDraft
+    ? `otpauth://totp/${encodeURIComponent(`Nexora:${user.email ?? user.uid}`)}?secret=${encodeURIComponent(totpDraft.secretKey)}&issuer=Nexora&algorithm=SHA1&digits=6&period=30`
+    : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -340,10 +344,17 @@ export default function AccountScreen() {
                 </Pressable>
               ) : (
                 <View style={styles.totpSetup}>
-                  <Text style={styles.totpTitle}>1. Add this key to your authenticator</Text>
+                  <Text style={styles.totpTitle}>1. Scan this QR code with your authenticator</Text>
+                  <View style={styles.totpQrFrame}>
+                    {totpOtpAuthUri ? <QRCode value={totpOtpAuthUri} size={196} backgroundColor="#FFFFFF" color="#172C4B" /> : null}
+                  </View>
+                  <Text style={styles.sessionIntro}>
+                    QR dibuat secara lokal di perangkat. Jangan bagikan atau screenshot QR/secret ini. Jika aplikasi authenticator tidak dapat memindai QR, masukkan secret manual di bawah.
+                  </Text>
+                  <Text style={styles.totpTitle}>Manual setup key</Text>
                   <Text selectable style={styles.totpSecret}>{totpDraft.secretKey}</Text>
                   <Text style={styles.sessionIntro}>
-                    Add an account manually in Google Authenticator, Microsoft Authenticator, or another TOTP app. Use account {user.email ?? user.uid} and issuer Nexora. Keep this key private.
+                    Account: {user.email ?? user.uid} · Issuer: Nexora · Type: Time-based (6 digits, 30 seconds).
                   </Text>
                   <Text style={styles.totpTitle}>2. Enter the 6-digit code</Text>
                   <TextInput
@@ -508,6 +519,7 @@ const styles = StyleSheet.create({
   disabledButton: { opacity: 0.45 },
   mfaFactorRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 10 },
   totpSetup: { backgroundColor: "#F6F8FB", borderRadius: 12, padding: 12, marginTop: 10 },
+  totpQrFrame: { alignSelf: "center", backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12, marginVertical: 8 },
   totpTitle: { color: "#263E5E", fontSize: 10, fontWeight: "900", marginTop: 8, marginBottom: 7 },
   totpSecret: { color: "#172C4B", backgroundColor: "#E8EEF6", padding: 12, borderRadius: 9, fontSize: 15, fontWeight: "900", letterSpacing: 1.1 },
   totpInput: { minHeight: 46, borderWidth: 1, borderColor: "#DCE4EE", backgroundColor: "#FFFFFF", borderRadius: 10, paddingHorizontal: 12, color: "#172C4B", fontSize: 18, fontWeight: "800", letterSpacing: 5, textAlign: "center" },
