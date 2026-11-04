@@ -195,8 +195,8 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
     const factor = resolver.hints.find((hint) => hint.uid === factorUid && hint.factorId === "totp");
     if (!factor) throw new Error("MFA_FACTOR_NOT_FOUND");
 
-    const normalizedCode = verificationCode.replace(/\\s+/g, "");
-    if (!/^\\d{6}$/.test(normalizedCode)) throw new Error("INVALID_TOTP_CODE");
+    const normalizedCode = verificationCode.replace(/\s+/g, "");
+    if (!/^\d{6}$/.test(normalizedCode)) throw new Error("INVALID_TOTP_CODE");
 
     const assertion = TotpMultiFactorGenerator.assertionForSignIn(factor.uid, normalizedCode);
     const credential = await resolver.resolveSignIn(assertion);
