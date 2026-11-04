@@ -75,6 +75,7 @@ class SecurityEvent(models.Model):
         EMAIL_VERIFICATION_CONFIRMED = "identity.email_verification_confirmed", "Email verification confirmed"
         CREDENTIAL_CHANGED = "identity.credential_changed", "Credential changed"
         AUTH_CONTEXT_CHANGED = "identity.auth_context_changed", "Authentication context changed"
+        MFA_AUTHENTICATED = "identity.mfa_authenticated", "Multi-factor authentication completed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
@@ -116,6 +117,8 @@ class IdentitySession(models.Model):
     last_seen_at = models.DateTimeField()
     revoked_at = models.DateTimeField(null=True, blank=True)
     email_verified = models.BooleanField(default=False)
+    mfa_verified = models.BooleanField(default=False)
+    second_factor_type = models.CharField(max_length=16, blank=True)
     source_ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=512, blank=True)
 
