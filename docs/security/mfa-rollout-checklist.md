@@ -10,7 +10,7 @@ This checklist is an operator-run prerequisite. Do not enable mandatory MFA unti
 - [x] TOTP sign-in challenge resolution before authenticated navigation.
 - [x] Factor inventory and factor removal UI.
 - [x] Clear the in-memory enrollment secret on completion, cancellation, and sign-out.
-- [ ] QR code rendering; current enrollment supports manual secret entry only.
+- [x] Local QR code rendering using `react-native-qrcode-svg` + `react-native-svg`; manual secret remains available as fallback.
 - [ ] Recovery codes, alternate-factor recovery, and account recovery workflow.
 - [ ] Android/iOS development builds and end-to-end device validation.
 
@@ -37,7 +37,7 @@ The completed items above describe code implementation only; they do not mean th
 
 - [ ] Reject enrollment when email is not verified.
 - [ ] Require recent reauthentication before generating an enrollment secret.
-- [ ] Display QR code and manual secret only in the enrollment flow (manual secret is implemented; QR display remains pending).
+- [ ] Verify QR code and manual secret are displayed only in the enrollment flow; confirm neither the TOTP secret nor `otpauth` URI is logged, persisted, or sent to any remote service.
 - [ ] Never log, persist, or send the TOTP secret to Nexora API.
 - [ ] Reject invalid or expired TOTP codes.
 - [ ] Confirm successful enrollment updates Firebase factor metadata and ID token claims.
