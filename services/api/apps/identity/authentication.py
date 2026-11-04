@@ -11,7 +11,11 @@ from apps.integrations.firebase_admin.app import (
     FirebaseConfigurationError,
 )
 from .models import IdentityProviderAccount, IdentitySession, SecurityEvent
-from .security import authentication_dedupe_key, record_security_event
+from .security import (
+    auth_context_dedupe_key,
+    authentication_dedupe_key,
+    record_security_event,
+)
 from .services import IdentityAccessDenied, IdentityService, VerifiedIdentity
 
 
@@ -74,6 +78,13 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
             source_ip = None
         user_agent = request.META.get("HTTP_USER_AGENT", "")[:512]
 
+        # Compare only with the immediately preceding session for this exact
+        # provider account. Missing values are not treated as a mismatch.
+        previous_session = (
+            IdentitySession.objects.filter(provider_account=provider_account)
+            .order_by("-authenticated_at")
+            .first()
+        )
         session, created = IdentitySession.objects.get_or_create(
             provider_account=provider_account,
             authenticated_at=authenticated_at,
@@ -87,8 +98,6 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
         if session.revoked_at is not None:
             raise AuthenticationFailed("This Nexora session has been revoked.")
 
-        # Refresh activity periodically and synchronize the server-verified
-        # email claim so verification takes effect after the client refreshes its token.
         was_email_verified = session.email_verified
         updates = {}
         if session.last_seen_at < now - timedelta(minutes=5):
@@ -121,6 +130,23 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
                 provider="firebase",
                 dedupe_key=dedupe_key,
             )
+            if previous_session is not None:
+                ip_changed = bool(
+                    source_ip and previous_session.source_ip
+                    and source_ip != previous_session.source_ip
+                )
+                agent_changed = bool(
+                    user_agent and previous_session.user_agent
+                    and user_agent != previous_session.user_agent
+                )
+                if ip_changed or agent_changed:
+                    record_security_event(
+                        user=user,
+                        event_type=SecurityEvent.EventType.AUTH_CONTEXT_CHANGED,
+                        request=request,
+                        provider="firebase",
+                        dedupe_key=auth_context_dedupe_key(session.pk),
+                    )
 
         return user, None
 
