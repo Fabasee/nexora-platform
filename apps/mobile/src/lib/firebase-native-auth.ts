@@ -196,6 +196,10 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
     await user.getIdToken(true);
   },
 
+  cancelMfaSignInChallenge() {
+    pendingSignInResolver = null;
+  },
+
   async completeTotpSignIn(factorUid, verificationCode) {
     requireAuth();
     const resolver = pendingSignInResolver;
