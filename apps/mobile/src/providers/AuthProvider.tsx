@@ -8,6 +8,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -25,6 +26,7 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     );
     try {
       await updateProfile(credential.user, { displayName: name.trim() });
+      await sendEmailVerification(credential.user);
     } catch (error) {
       await firebaseSignOut(getFirebaseAuth());
       throw error;
@@ -80,12 +83,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
   };
 
+  const sendVerificationEmail = async () => {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) throw new Error("No authenticated user is available.");
+    await sendEmailVerification(currentUser);
+  };
+
   const signOut = async () => {
     await firebaseSignOut(getFirebaseAuth());
   };
 
   return (
-    <AuthContext.Provider value={{ user, status, signIn, register, resetPassword, signOut }}>
+    <AuthContext.Provider value={{ user, status, signIn, register, resetPassword, sendVerificationEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   );
