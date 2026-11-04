@@ -115,8 +115,27 @@ class CurrentAccountApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["id"], str(self.user.pk))
         self.assertEqual(response.data["status"], "active")
+        self.assertFalse(response.data["email_verified"])
         self.assertEqual(response.data["providers"][0]["provider"], "firebase")
         self.assertNotIn("provider_subject", response.data["providers"][0])
+
+    @patch("apps.identity.authentication.firebase_auth.verify_id_token")
+    @patch("apps.identity.authentication.FirebaseAdminAppFactory.get_app")
+    def test_current_account_reports_server_verified_email_claim(self, get_app, verify_token):
+        get_app.return_value = object()
+        verify_token.return_value = {
+            "uid": "firebase-account-subject",
+            "auth_time": 1_798_000_000,
+            "email_verified": True,
+        }
+
+        response = self.client.get(
+            "/api/v1/account/me/",
+            HTTP_AUTHORIZATION="Bearer valid-token",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["email_verified"])
 
 
 
