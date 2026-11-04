@@ -2,6 +2,20 @@
 
 This checklist is an operator-run prerequisite. Do not enable mandatory MFA until every required test is complete.
 
+## Client implementation status
+
+- [x] Native Android/iOS authentication adapter using React Native Firebase Auth 27.1.0.
+- [x] Reauthentication with current password before TOTP enrollment and factor removal.
+- [x] TOTP enrollment secret generation and six-digit enrollment verification.
+- [x] TOTP sign-in challenge resolution before authenticated navigation.
+- [x] Factor inventory and factor removal UI.
+- [x] Clear the in-memory enrollment secret on completion, cancellation, and sign-out.
+- [ ] QR code rendering; current enrollment supports manual secret entry only.
+- [ ] Recovery codes, alternate-factor recovery, and account recovery workflow.
+- [ ] Android/iOS development builds and end-to-end device validation.
+
+The completed items above describe code implementation only; they do not mean the Firebase project is configured or that MFA is live for users.
+
 ## Firebase project prerequisites
 
 - [ ] Confirm the Firebase project is upgraded to Firebase Authentication with Identity Platform.
@@ -23,7 +37,7 @@ This checklist is an operator-run prerequisite. Do not enable mandatory MFA unti
 
 - [ ] Reject enrollment when email is not verified.
 - [ ] Require recent reauthentication before generating an enrollment secret.
-- [ ] Display QR code and manual secret only in the enrollment flow.
+- [ ] Display QR code and manual secret only in the enrollment flow (manual secret is implemented; QR display remains pending).
 - [ ] Never log, persist, or send the TOTP secret to Nexora API.
 - [ ] Reject invalid or expired TOTP codes.
 - [ ] Confirm successful enrollment updates Firebase factor metadata and ID token claims.
