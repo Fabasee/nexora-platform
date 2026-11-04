@@ -72,10 +72,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     );
     try {
       await updateProfile(credential.user, { displayName: name.trim() });
-      await sendEmailVerification(credential.user);
     } catch (error) {
       await firebaseSignOut(getFirebaseAuth());
       throw error;
+    }
+
+    // Account creation must not be rolled back just because the mail provider is
+    // temporarily unavailable; the signed-in account can request another link.
+    try {
+      await sendEmailVerification(credential.user);
+    } catch {
+      // The account screen exposes a retry action for unverified addresses.
     }
   };
 
