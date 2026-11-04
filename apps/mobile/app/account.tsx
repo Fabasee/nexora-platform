@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { reload } from "firebase/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { fetchCurrentAccount, fetchSecurityEvents, type NexoraAccount, type NexoraSecurityEvent } from "../src/lib/api";
+import { fetchCurrentAccount, fetchSecurityEvents, fetchIdentitySessions, revokeIdentitySession, type NexoraAccount, type NexoraSecurityEvent, type NexoraIdentitySession } from "../src/lib/api";
 import { useAuth } from "../src/providers/AuthProvider";
 
 export default function AccountScreen() {
@@ -18,7 +18,7 @@ export default function AccountScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [securityEvents, setSecurityEvents] = useState<NexoraSecurityEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [eventsError, setEventsError] = useState("");
+  const [eventsError, setEventsError] = useState("");\n  const [sessions, setSessions] = useState<NexoraIdentitySession[]>([]);\n  const [sessionsLoading, setSessionsLoading] = useState(true);\n  const [sessionsError, setSessionsError] = useState("");\n  const [sessionBusyId, setSessionBusyId] = useState<string | null>(null);\n  const [sessionNotice, setSessionNotice] = useState("");
 
   useEffect(() => {
     if (user) setEmailVerified(user.emailVerified);
@@ -45,6 +45,14 @@ export default function AccountScreen() {
         } finally {
           if (active) setEventsLoading(false);
         }
+        try {
+          const currentSessions = await fetchIdentitySessions(token);
+          if (active) setSessions(currentSessions);
+        } catch {
+          if (active) setSessionsError("Daftar perangkat dan sesi belum dapat dimuat.");
+        } finally {
+          if (active) setSessionsLoading(false);
+        }
       } catch (requestError) {
         if (active) {
           const code = (requestError as { status?: number })?.status;
@@ -55,7 +63,7 @@ export default function AccountScreen() {
       } finally {
         if (active) {
           setLoading(false);
-          setEventsLoading(false);
+          setEventsLoading(false);\n          setSessionsLoading(false);
         }
       }
     }
@@ -82,6 +90,25 @@ export default function AccountScreen() {
       setVerificationNotice("Permintaan verifikasi belum berhasil. Coba kembali beberapa saat lagi.");
     } finally {
       setVerificationBusy(false);
+    }
+  }
+
+  async function handleRevokeSession(sessionId: string) {
+    if (!user) return;
+    setSessionBusyId(sessionId);
+    setSessionNotice("");
+    try {
+      await revokeIdentitySession(await user.getIdToken(), sessionId);
+      setSessions((current) => current.map((session) =>
+        session.id === sessionId
+          ? { ...session, is_active: false, revoked_at: new Date().toISOString() }
+          : session
+      ));
+      setSessionNotice("Sesi perangkat berhasil dicabut. Perangkat tersebut tidak dapat lagi menggunakan API Nexora dengan sesi ini.");
+    } catch {
+      setSessionNotice("Sesi belum berhasil dicabut. Muat ulang halaman dan coba kembali.");
+    } finally {
+      setSessionBusyId(null);
     }
   }
 
@@ -190,6 +217,44 @@ export default function AccountScreen() {
           )}
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Devices & active sessions</Text>
+          <Text style={styles.sessionIntro}>Sesi dibuat berdasarkan waktu autentikasi Firebase dan dikontrol oleh API Nexora.</Text>
+          {sessionsLoading ? (
+            <ActivityIndicator color="#294C75" style={styles.loader} />
+          ) : sessionsError ? (
+            <Text style={styles.eventError}>{sessionsError}</Text>
+          ) : sessions.length === 0 ? (
+            <Text style={styles.eventEmpty}>Belum ada sesi yang tercatat.</Text>
+          ) : (
+            sessions.map((session) => (
+              <View key={session.id} style={styles.sessionRow}>
+                <View style={styles.sessionCopy}>
+                  <Text style={styles.eventTitle}>
+                    {session.is_current ? "This device" : "Signed-in device"}
+                    {session.is_active ? " · Active" : " · Revoked"}
+                  </Text>
+                  <Text style={styles.eventMeta}>Last activity: {new Date(session.last_seen_at).toLocaleString()}</Text>
+                  <Text numberOfLines={2} style={styles.eventMeta}>{session.user_agent || "Unknown device information"}</Text>
+                  {!!session.source_ip && <Text style={styles.eventMeta}>IP: {session.source_ip}</Text>}
+                </View>
+                {session.is_active && !session.is_current && (
+                  <Pressable
+                    disabled={sessionBusyId === session.id}
+                    onPress={() => handleRevokeSession(session.id)}
+                    style={styles.revokeButton}
+                  >
+                    {sessionBusyId === session.id
+                      ? <ActivityIndicator color="#A33D37" size="small" />
+                      : <Text style={styles.revokeText}>Revoke</Text>}
+                  </Pressable>
+                )}
+              </View>
+            ))
+          )}
+          {!!sessionNotice && <Text accessibilityLiveRegion="polite" style={styles.verificationNotice}>{sessionNotice}</Text>}
+        </View>
+
         <Pressable onPress={handleSignOut} style={styles.signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
@@ -248,7 +313,7 @@ const styles = StyleSheet.create({
   verifyButton: { minHeight: 42, borderRadius: 11, backgroundColor: "#294C75", alignItems: "center", justifyContent: "center", marginTop: 8, paddingHorizontal: 12 },
   verifyText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
   verificationNotice: { color: "#42638B", fontSize: 10, lineHeight: 15, marginTop: 8 },
-  eventRow: { flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },
+  sessionIntro: { color: "#8794A6", fontSize: 9, lineHeight: 14, marginBottom: 8 },\n  sessionRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },\n  sessionCopy: { flex: 1, gap: 4 },\n  revokeButton: { minWidth: 62, minHeight: 32, borderRadius: 9, borderWidth: 1, borderColor: "#E7C9C7", alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },\n  revokeText: { color: "#A33D37", fontSize: 9, fontWeight: "900" },\n  eventRow: { flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },
   eventDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#5B8BBD", marginTop: 4 },
   eventCopy: { flex: 1, gap: 4 },
   eventTitle: { color: "#263E5E", fontSize: 11, fontWeight: "800" },
