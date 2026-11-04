@@ -95,3 +95,44 @@ export async function fetchSecurityEvents(idToken: string): Promise<NexoraSecuri
   }
   return payload.results;
 }
+
+
+export type NexoraIdentitySession = {
+  id: string;
+  provider: string;
+  authenticated_at: string;
+  created_at: string;
+  last_seen_at: string;
+  revoked_at: string | null;
+  is_active: boolean;
+  is_current: boolean;
+  source_ip: string | null;
+  user_agent: string;
+};
+
+export async function fetchIdentitySessions(idToken: string): Promise<NexoraIdentitySession[]> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/account/sessions/`, {
+    method: "GET",
+    headers: { Accept: "application/json", Authorization: `Bearer ${idToken}` },
+  });
+  if (!response.ok) throw new ApiError("Unable to load Nexora sessions.", response.status);
+  const payload = (await response.json()) as { results?: NexoraIdentitySession[] };
+  if (!payload || !Array.isArray(payload.results)) {
+    throw new ApiError("The Nexora API returned an invalid session response.", response.status);
+  }
+  return payload.results;
+}
+
+export async function revokeIdentitySession(idToken: string, sessionId: string): Promise<void> {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/v1/account/sessions/${encodeURIComponent(sessionId)}/revoke/`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+    },
+  );
+  if (!response.ok) throw new ApiError("Unable to revoke Nexora session.", response.status);
+}
