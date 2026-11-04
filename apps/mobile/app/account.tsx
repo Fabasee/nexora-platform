@@ -520,6 +520,7 @@ const styles = StyleSheet.create({
   disabledButton: { opacity: 0.45 },
   mfaFactorRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 10 },
   totpSetup: { backgroundColor: "#F6F8FB", borderRadius: 12, padding: 12, marginTop: 10 },
+  totpQrFrame: { alignSelf: "center", backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12, marginVertical: 8, borderWidth: 1, borderColor: "#E2E8F0" },
   totpTitle: { color: "#263E5E", fontSize: 10, fontWeight: "900", marginTop: 8, marginBottom: 7 },
   totpSecret: { color: "#172C4B", backgroundColor: "#E8EEF6", padding: 12, borderRadius: 9, fontSize: 15, fontWeight: "900", letterSpacing: 1.1 },
   totpInput: { minHeight: 46, borderWidth: 1, borderColor: "#DCE4EE", backgroundColor: "#FFFFFF", borderRadius: 10, paddingHorizontal: 12, color: "#172C4B", fontSize: 18, fontWeight: "800", letterSpacing: 5, textAlign: "center" },
