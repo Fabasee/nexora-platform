@@ -29,7 +29,7 @@
     "expo-dev-client": "~57.0.20",
     "expo-build-properties": "~57.0.22",
     "react-native-svg": "15.15.4",
-    "react-native-qrcode-svg": "^6.3.50"
+    "react-native-qrcode-svg": "6.3.27"
   },
   "devDependencies": {
     "@types/react": "~19.2.0",
