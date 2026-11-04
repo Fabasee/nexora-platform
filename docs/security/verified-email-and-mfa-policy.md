@@ -24,11 +24,11 @@ The API returns `email_verified`, `mfa_verified`, and `second_factor_type` for t
 
 Use Firebase Authentication with Google Cloud Identity Platform's TOTP MFA capability as the preferred authenticator-app factor. TOTP avoids SMS delivery costs and SIM-swap exposure. Keep a second enrolled factor or a documented account recovery process before making MFA mandatory.
 
-Firebase's documented TOTP MFA flow uses the modular Firebase JavaScript SDK and requires upgrading the Firebase project to Identity Platform with TOTP enabled. The current Expo app uses the Firebase JS SDK. For Android and iOS, the selected implementation path is a deliberate migration to React Native Firebase Auth plus Expo Development Client, after confirming package compatibility with the repository's Expo SDK and React Native versions. React Native Firebase exposes native MFA APIs, including TOTP. Expo Go cannot load its native modules. See ADR 0002 and the MFA rollout checklist. The existing JS SDK auth adapter remains in place until the native adapter passes end-to-end regression tests. Expo Go alone is not sufficient evidence for validating native production behavior.
+Firebase TOTP MFA requires upgrading the Firebase project to Identity Platform and enabling TOTP. Android/iOS now use React Native Firebase Auth 27.1.0 through Expo Development Client; web retains the Firebase JS SDK adapter. The native client implements TOTP enrollment, TOTP sign-in resolver completion, and factor removal. Expo Go cannot load the native modules. See ADR 0002 and the MFA rollout checklist. The current enrollment UI displays a temporary manual secret; QR rendering is not implemented yet. The native flow has not yet passed device end-to-end tests.
 
 The app must implement:
-1. Reauthenticate the current user before enrollment, factor removal, or other sensitive MFA changes.
-2. Generate a Firebase TOTP enrollment secret from a valid MFA session and show the QR code/secret only during enrollment.
+1. Reauthenticate the current user with the current password before enrollment and factor removal.
+2. Reauthenticate the user with the current password, generate a Firebase TOTP enrollment secret from a valid MFA session, and show the manual secret only during enrollment.
 3. Require a valid authenticator code to complete enrollment.
 4. Catch `auth/multi-factor-auth-required` during sign-in, present the available enrolled factor, and complete the resolver challenge before navigating into the signed-in app.
 5. Force-refresh the ID token after enrollment/sign-in and let the API verify the reserved second-factor claim.
@@ -44,9 +44,9 @@ Session revocation uses a scoped authenticated-user throttle of 10 requests per 
 ## Current limitations
 
 - The backend now recognizes verified Firebase MFA claims, stores MFA state per Nexora session, records MFA authentication events, and exposes an MFA-required permission.
-- The mobile native Firebase Auth adapter migration, TOTP enrollment UI, and sign-in challenge UI are not implemented yet.
+- The React Native Firebase native adapter, TOTP enrollment UI, sign-in challenge resolver, and factor-removal UI are implemented but not yet device-validated. Enrollment currently uses manual secret entry rather than QR rendering.
 - The Firebase project has not been confirmed as upgraded to Identity Platform or configured for TOTP.
-- No recovery codes are generated or stored by Nexora. Do not claim recovery codes are available; recovery-factor and account recovery design remains pending.
+- No recovery codes are generated or stored by Nexora. Do not claim recovery codes are available; alternate-factor and account recovery design remains pending.
 - No API endpoint currently applies `VerifiedMFARequired`; sensitive endpoints must opt in deliberately after client enrollment and challenge are tested.
 - MFA is not active for users until the Firebase project configuration and client flows are completed and tested.
 - Product catalog is the first protected resource for verified email; individual product APIs must explicitly adopt the same permission or a stronger policy.
