@@ -54,6 +54,7 @@ export async function fetchAccessibleProducts(
 export type NexoraAccount = {
   id: string;
   status: "active" | "suspended" | "deactivated";
+  email_verified: boolean;
   created_at: string;
   providers: { provider: string; last_authenticated_at: string | null }[];
 };
