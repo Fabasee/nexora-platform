@@ -5,23 +5,15 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  updateProfile,
-  type User,
-} from "firebase/auth";
 
-import { getFirebaseAuth, isFirebaseConfigured } from "../lib/firebase";
+import { isFirebaseConfigured } from "../lib/firebase";
+import { firebaseJsAuthAdapter } from "../lib/firebase-js-auth";
+import type { AuthUser } from "../lib/auth-types";
 
 type AuthStatus = "loading" | "signed-in" | "signed-out" | "unconfigured" | "error";
 
 type AuthContextValue = {
-  user: User | null;
+  user: AuthUser | null;
   status: AuthStatus;
   signIn: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -33,7 +25,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
 
   useEffect(() => {
@@ -43,8 +35,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     try {
-      return onAuthStateChanged(
-        getFirebaseAuth(),
+      return firebaseJsAuthAdapter.subscribe(
         (nextUser) => {
           setUser(nextUser);
           setStatus(nextUser ? "signed-in" : "signed-out");
@@ -61,47 +52,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
+    await firebaseJsAuthAdapter.signIn(email, password);
   };
 
   const register = async (name: string, email: string, password: string) => {
-    const credential = await createUserWithEmailAndPassword(
-      getFirebaseAuth(),
-      email.trim(),
-      password,
-    );
-    try {
-      await updateProfile(credential.user, { displayName: name.trim() });
-    } catch (error) {
-      await firebaseSignOut(getFirebaseAuth());
-      throw error;
-    }
-
-    // Account creation must not be rolled back just because the mail provider is
-    // temporarily unavailable; the signed-in account can request another link.
-    try {
-      await sendEmailVerification(credential.user);
-    } catch {
-      // The account screen exposes a retry action for unverified addresses.
-    }
+    await firebaseJsAuthAdapter.register(name, email, password);
   };
 
   const resetPassword = async (email: string) => {
-    await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+    await firebaseJsAuthAdapter.resetPassword(email);
   };
 
   const sendVerificationEmail = async () => {
-    const currentUser = getFirebaseAuth().currentUser;
-    if (!currentUser) throw new Error("No authenticated user is available.");
-    await sendEmailVerification(currentUser);
+    await firebaseJsAuthAdapter.sendVerificationEmail();
   };
 
   const signOut = async () => {
-    await firebaseSignOut(getFirebaseAuth());
+    await firebaseJsAuthAdapter.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, status, signIn, register, resetPassword, sendVerificationEmail, signOut }}>
+    <AuthContext.Provider value={{
+      user,
+      status,
+      signIn,
+      register,
+      resetPassword,
+      sendVerificationEmail,
+      signOut,
+    }}>
       {children}
     </AuthContext.Provider>
   );
