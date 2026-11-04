@@ -67,6 +67,7 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
         provider_account = IdentityProviderAccount.objects.get(
             user=user, provider="firebase", provider_subject=subject
         )
+        email_verified = claims.get("email_verified") is True
         now = django_timezone.now()
         source_ip = request.META.get("REMOTE_ADDR") or None
         if source_ip and len(source_ip) > 45:
@@ -78,6 +79,7 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
             authenticated_at=authenticated_at,
             defaults={
                 "last_seen_at": now,
+                "email_verified": email_verified,
                 "source_ip": source_ip,
                 "user_agent": user_agent,
             },
@@ -85,16 +87,30 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
         if session.revoked_at is not None:
             raise AuthenticationFailed("This Nexora session has been revoked.")
 
-        # Avoid a database write on every API request while keeping activity fresh.
-        if not created and session.last_seen_at < now - timedelta(minutes=5):
-            IdentitySession.objects.filter(pk=session.pk, revoked_at__isnull=True).update(
-                last_seen_at=now,
-                source_ip=source_ip,
-                user_agent=user_agent,
-            )
+        # Refresh activity periodically and synchronize the server-verified
+        # email claim so verification takes effect after the client refreshes its token.
+        was_email_verified = session.email_verified
+        updates = {}
+        if session.last_seen_at < now - timedelta(minutes=5):
+            updates.update(last_seen_at=now, source_ip=source_ip, user_agent=user_agent)
+        if session.email_verified != email_verified:
+            updates["email_verified"] = email_verified
+        if updates:
+            IdentitySession.objects.filter(pk=session.pk, revoked_at__isnull=True).update(**updates)
+            for field, value in updates.items():
+                setattr(session, field, value)
         if not IdentitySession.objects.filter(pk=session.pk, revoked_at__isnull=True).exists():
             raise AuthenticationFailed("This Nexora session has been revoked.")
         request.nexora_session_id = session.pk
+        request.nexora_email_verified = email_verified
+
+        if email_verified and not was_email_verified:
+            record_security_event(
+                user=user,
+                event_type=SecurityEvent.EventType.EMAIL_VERIFICATION_CONFIRMED,
+                request=request,
+                provider="firebase",
+            )
 
         if created:
             dedupe_key = authentication_dedupe_key(user.pk, "firebase", authenticated_at)
