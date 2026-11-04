@@ -3,7 +3,6 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, Text
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
-import QRCode from "react-native-qrcode-svg";
 
 import { fetchCurrentAccount, fetchSecurityEvents, fetchIdentitySessions, revokeIdentitySession, type NexoraAccount, type NexoraSecurityEvent, type NexoraIdentitySession } from "../src/lib/api";
 import { useAuth } from "../src/providers/AuthProvider";
