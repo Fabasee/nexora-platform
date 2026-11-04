@@ -166,8 +166,11 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
 
     return {
       secretKey: secret.secretKey,
-      otpauthUrl: secret.generateQrCodeUrl(user.email ?? user.uid, "Nexora"),
     };
+  },
+
+  cancelTotpEnrollment() {
+    pendingTotpEnrollment = null;
   },
 
   async completeTotpEnrollment(verificationCode, displayName = "Nexora authenticator") {
