@@ -1,10 +1,12 @@
 import { getApps } from "@react-native-firebase/app";
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   getAuth,
   getMultiFactorResolver,
   multiFactor,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -148,13 +150,15 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
     return multiFactor(user).enrolledFactors.map(toMfaFactor);
   },
 
-  async beginTotpEnrollment(): Promise<TotpEnrollmentDraft> {
+  async beginTotpEnrollment(currentPassword): Promise<TotpEnrollmentDraft> {
     const auth = requireAuth();
     const user = requireCurrentUser();
     await user.reload();
     if (!user.emailVerified) {
       throw new Error("VERIFIED_EMAIL_REQUIRED");
     }
+    if (!user.email) throw new Error("REAUTH_EMAIL_UNAVAILABLE");
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, currentPassword));
 
     const session = await multiFactor(user).getSession();
     const secret = await TotpMultiFactorGenerator.generateSecret(session, auth);
@@ -204,8 +208,10 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
     await credential.user.getIdToken(true);
   },
 
-  async removeMfaFactor(factorUid) {
+  async removeMfaFactor(factorUid, currentPassword) {
     const user = requireCurrentUser();
+    if (!user.email) throw new Error("REAUTH_EMAIL_UNAVAILABLE");
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, currentPassword));
     const factor = multiFactor(user).enrolledFactors.find((item) => item.uid === factorUid);
     if (!factor) throw new Error("MFA_FACTOR_NOT_FOUND");
     await multiFactor(user).unenroll(factor);
