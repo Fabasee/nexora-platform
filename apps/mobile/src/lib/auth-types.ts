@@ -1,5 +1,3 @@
-import type { Unsubscribe } from "firebase/auth";
-
 export type AuthUser = {
   uid: string;
   email: string | null;
@@ -9,11 +7,13 @@ export type AuthUser = {
   reload: () => Promise<void>;
 };
 
+export type AuthUnsubscribe = () => void;
+
 export type AuthAdapter = {
   subscribe: (
     onUser: (user: AuthUser | null) => void,
     onError: (error: Error) => void,
-  ) => Unsubscribe;
+  ) => AuthUnsubscribe;
   signIn: (email: string, password: string) => Promise<AuthUser>;
   register: (name: string, email: string, password: string) => Promise<AuthUser>;
   resetPassword: (email: string) => Promise<void>;
