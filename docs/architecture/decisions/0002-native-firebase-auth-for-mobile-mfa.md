@@ -1,6 +1,6 @@
 # ADR 0002: Native Firebase Authentication for mobile MFA
 
-- Status: Accepted for implementation planning; migration not yet applied
+- Status: Implementation in progress
 - Date: 2026-11-04
 - Decision owners: Nexora platform
 
@@ -15,8 +15,8 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 ## Decision
 
 1. Keep Firebase Authentication with Identity Platform as the identity provider and Nexora's internal UUID as the canonical account anchor.
-2. For Android and iOS, adopt React Native Firebase Auth as the native authentication adapter after a compatibility proof-of-concept against the selected Expo SDK / React Native versions.
-3. Add Expo Development Client and native config plugins only as part of that migration; do not claim Expo Go support for native MFA.
+2. For Android and iOS, adopt React Native Firebase Auth 27.1.0 as the native authentication adapter. Its published peer ranges include Expo >=47 and React Native >=0.60; Expo SDK 57 / React Native 0.86.3 are within those declared ranges.
+3. Use Expo Development Client 57.0.20 and Expo Build Properties 57.0.22 for the SDK 57 project. Configure React Native Firebase app/auth plugins and dynamic iOS frameworks; do not claim Expo Go support for native MFA.
 4. Keep the current Firebase JS SDK implementation unchanged until the native adapter passes the same auth contract tests and a device-level MFA enrollment/sign-in test.
 5. If the app ships web, retain a platform-specific web adapter using the Firebase JS SDK. Do not mix JS SDK and native SDK user instances within one platform runtime.
 6. Preserve the existing backend token contract: Firebase ID token in Bearer authorization, verified with Firebase Admin and revocation checking. The backend remains provider-neutral and does not store TOTP secrets.
@@ -24,15 +24,15 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 
 ## Migration acceptance criteria
 
-- [ ] Confirm compatible React Native Firebase app/auth package versions for the repository's Expo SDK and React Native versions.
-- [ ] Add an Expo development build and Android/iOS Firebase native configuration without committing private service credentials.
-- [ ] Implement platform-specific Firebase Auth adapter with a stable interface for sign-in, registration, password reset, email verification, sign-out, token retrieval, and MFA.
-- [ ] Preserve AsyncStorage-backed auth persistence and ensure no duplicate Firebase app/auth instances.
+- [x] Confirm React Native Firebase app/auth 27.1.0 peer compatibility with Expo SDK 57 / React Native 0.86.3.
+- [x] Add Expo Development Client, EAS development profile, config plugins, and ignored native Firebase client config paths. Native app files still need to be supplied locally/EAS.
+- [x] Implement platform-selected native and web Auth adapters for sign-in, registration, password reset, email verification, sign-out, and ID-token retrieval. TOTP operations remain pending.
+- [x] Preserve the web adapter's AsyncStorage persistence and use the native SDK's platform persistence on Android/iOS. Native default-app configuration is required.
 - [ ] Implement TOTP enrollment: recent reauthentication, generate secret, show QR and manual secret, verify initial code, then enroll.
 - [ ] Implement TOTP challenge after `auth/multi-factor-auth-required` and resolve sign-in before app navigation.
 - [ ] Support at least one additional factor or a secure recovery workflow before mandatory MFA.
 - [ ] Confirm Firebase ID token includes a recognized `firebase.sign_in_second_factor` claim after completed MFA.
-- [ ] Run backend tests, mobile typecheck, Expo prebuild, Android/iOS development build, and real-device end-to-end tests.
+- [ ] Run Expo prebuild, Android/iOS development builds, and real-device end-to-end tests after the Firebase native config files are supplied.
 - [ ] Verify factor removal requires recent reauthentication and emits a security audit event.
 
 ## Consequences
@@ -41,3 +41,14 @@ The React Native Firebase Auth module exposes multi-factor APIs, including TOTP 
 - The mobile authentication adapter needs a deliberate migration and regression suite.
 - Native Firebase configuration files must be supplied through secure project configuration and must not be committed if they contain sensitive environment-specific data.
 - No custom MFA secret storage is added to Nexora's database.
+
+
+## Implementation progress (2026-11-04)
+
+- Added `@react-native-firebase/app` and `@react-native-firebase/auth` pinned to 27.1.0.
+- Added SDK 57-compatible `expo-dev-client` 57.0.20 and `expo-build-properties` 57.0.22.
+- Added platform adapter selection: Android/iOS use React Native Firebase; web retains the existing Firebase JS SDK adapter. A platform runtime uses only one Auth implementation.
+- Added dynamic iOS framework configuration required by the current React Native Firebase / Firebase Apple SDK toolchain.
+- Added EAS development, preview, and production profiles. Native Firebase client files are git-ignored but included in the mobile EAS archive; Admin service-account credentials remain excluded.
+- CI typecheck and Expo dependency compatibility pass on the implementation commit. Native prebuild/device tests are blocked until the project-specific `google-services.json` and `GoogleService-Info.plist` are supplied.
+- TOTP enrollment, MFA sign-in resolver UI, recovery, factor management, and device-level validation are not implemented yet. MFA is not active.
