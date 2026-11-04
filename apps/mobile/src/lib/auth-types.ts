@@ -25,7 +25,6 @@ export class MfaChallengeRequiredError extends Error {
 
 export type TotpEnrollmentDraft = {
   secretKey: string;
-  otpauthUrl: string;
 };
 
 export type AuthAdapter = {
@@ -41,6 +40,7 @@ export type AuthAdapter = {
   getMfaFactors: () => Promise<AuthMfaFactor[]>;
   beginTotpEnrollment: (currentPassword: string) => Promise<TotpEnrollmentDraft>;
   completeTotpEnrollment: (verificationCode: string, displayName?: string) => Promise<void>;
+  cancelTotpEnrollment: () => void;
   completeTotpSignIn: (factorUid: string, verificationCode: string) => Promise<void>;
   removeMfaFactor: (factorUid: string, currentPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
