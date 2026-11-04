@@ -31,7 +31,8 @@ type PendingTotpEnrollment = {
   secret: TotpSecret;
 };
 
-let pendingTotpEnrollment: PendingTotpEnrollment | null = null;\nlet pendingSignInResolver: MultiFactorResolver | null = null;
+let pendingTotpEnrollment: PendingTotpEnrollment | null = null;
+let pendingSignInResolver: MultiFactorResolver | null = null;
 
 function toAuthUser(user: User): AuthUser {
   return {
