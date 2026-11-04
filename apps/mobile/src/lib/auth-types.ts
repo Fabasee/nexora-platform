@@ -25,7 +25,6 @@ export class MfaChallengeRequiredError extends Error {
 
 export type TotpEnrollmentDraft = {
   secretKey: string;
-  qrCodeUrl: string;
 };
 
 export type AuthAdapter = {
