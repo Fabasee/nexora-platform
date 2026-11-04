@@ -166,6 +166,7 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
 
     return {
       secretKey: secret.secretKey,
+      qrCodeUrl: secret.generateQrCodeUrl(user.email ?? user.uid, "Nexora"),
     };
   },
 
