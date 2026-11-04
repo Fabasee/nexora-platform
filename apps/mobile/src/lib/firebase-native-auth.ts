@@ -153,6 +153,7 @@ export const firebaseNativeAuthAdapter: AuthAdapter = {
   async beginTotpEnrollment(currentPassword): Promise<TotpEnrollmentDraft> {
     const auth = requireAuth();
     const user = requireCurrentUser();
+    pendingTotpEnrollment = null;
     await user.reload();
     if (!user.emailVerified) {
       throw new Error("VERIFIED_EMAIL_REQUIRED");
