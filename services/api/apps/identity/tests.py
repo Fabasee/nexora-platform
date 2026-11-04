@@ -1,11 +1,11 @@
 from unittest.mock import patch
 
 from django.test import TestCase
-from rest_framework.test import APIRequestFactory
+from rest_framework.exceptions import AuthenticationFailed\nfrom rest_framework.test import APIRequestFactory
 
 from .authentication import FirebaseIdentityAuthentication
 
-from .models import IdentityProviderAccount, NexoraUser, SecurityEvent
+from .models import IdentityProviderAccount, IdentitySession, NexoraUser, SecurityEvent
 from .services import IdentityAccessDenied, IdentityService, VerifiedIdentity
 
 
@@ -165,3 +165,89 @@ class SecurityEventApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 50)
+
+
+
+class IdentitySessionApiTests(TestCase):
+    def setUp(self):
+        self.user = NexoraUser.objects.create_user()
+        self.other_user = NexoraUser.objects.create_user()
+        self.provider = IdentityProviderAccount.objects.create(
+            user=self.user,
+            provider="firebase",
+            provider_subject="session-owner-subject",
+        )
+        self.session = IdentitySession.objects.create(
+            provider_account=self.provider,
+            authenticated_at=__import__("django.utils.timezone", fromlist=["now"]).now(),
+            last_seen_at=__import__("django.utils.timezone", fromlist=["now"]).now(),
+            user_agent="Nexora test device",
+        )
+        self.client = APIClient()
+
+    def test_session_inventory_is_scoped_to_authenticated_account(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/v1/account/sessions/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["id"], str(self.session.pk))
+        self.assertFalse(response.data["results"][0]["is_current"])
+
+    def test_user_can_revoke_own_session(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            f"/api/v1/account/sessions/{self.session.pk}/revoke/",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.session.refresh_from_db()
+        self.assertIsNotNone(self.session.revoked_at)
+        self.assertTrue(SecurityEvent.objects.filter(
+            user=self.user,
+            event_type=SecurityEvent.EventType.SESSION_REVOKED,
+        ).exists())
+
+    def test_user_cannot_revoke_another_accounts_session(self):
+        other_provider = IdentityProviderAccount.objects.create(
+            user=self.other_user,
+            provider="firebase",
+            provider_subject="other-session-subject",
+        )
+        other_session = IdentitySession.objects.create(
+            provider_account=other_provider,
+            authenticated_at=self.session.authenticated_at,
+            last_seen_at=self.session.last_seen_at,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            f"/api/v1/account/sessions/{other_session.pk}/revoke/",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        other_session.refresh_from_db()
+        self.assertIsNone(other_session.revoked_at)
+
+
+class RevokedIdentitySessionTests(TestCase):
+    @patch("apps.identity.authentication.firebase_auth.verify_id_token")
+    @patch("apps.identity.authentication.FirebaseAdminAppFactory.get_app")
+    def test_revoked_session_is_rejected_even_if_firebase_token_is_valid(self, get_app, verify_token):
+        get_app.return_value = object()
+        verify_token.return_value = {
+            "uid": "revoked-session-subject",
+            "auth_time": 1_798_000_000,
+        }
+        request = APIRequestFactory().get(
+            "/api/v1/private/",
+            HTTP_AUTHORIZATION="Bearer valid-token",
+        )
+        authenticator = FirebaseIdentityAuthentication()
+        user, _ = authenticator.authenticate(request)
+        session = IdentitySession.objects.get(provider_account__user=user)
+        session.revoked_at = __import__("django.utils.timezone", fromlist=["now"]).now()
+        session.save(update_fields=("revoked_at",))
+
+        with self.assertRaises(AuthenticationFailed):
+            authenticator.authenticate(request)
