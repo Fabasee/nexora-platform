@@ -19,6 +19,8 @@ class CurrentAccountView(APIView):
             "id": str(user.pk),
             "status": user.status,
             "email_verified": getattr(request, "nexora_email_verified", False),
+            "mfa_verified": getattr(request, "nexora_mfa_verified", False),
+            "second_factor_type": getattr(request, "nexora_second_factor_type", ""),
             "created_at": user.created_at,
             "providers": list(providers),
         })
@@ -71,6 +73,8 @@ class IdentitySessionListView(APIView):
                     "revoked_at": session.revoked_at,
                     "is_active": session.revoked_at is None,
                     "is_current": str(session.pk) == str(getattr(request, "nexora_session_id", "")),
+                    "mfa_verified": session.mfa_verified,
+                    "second_factor_type": session.second_factor_type,
                     "source_ip": session.source_ip,
                     "user_agent": session.user_agent,
                 }
