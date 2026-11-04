@@ -63,3 +63,38 @@ class IdentityProviderAccount(models.Model):
 
     def __str__(self):
         return f"{self.provider}:{self.provider_subject}"
+
+
+class SecurityEvent(models.Model):
+    class EventType(models.TextChoices):
+        AUTHENTICATED = "identity.authenticated", "Identity authenticated"
+        ACCOUNT_VIEWED = "identity.account_viewed", "Account viewed"
+        VERIFICATION_REQUESTED = "identity.verification_requested", "Verification requested"
+        PASSWORD_RESET_REQUESTED = "identity.password_reset_requested", "Password reset requested"
+        SESSION_REVOKED = "identity.session_revoked", "Session revoked"
+        CREDENTIAL_CHANGED = "identity.credential_changed", "Credential changed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        NexoraUser,
+        on_delete=models.PROTECT,
+        related_name="security_events",
+    )
+    event_type = models.CharField(max_length=64, choices=EventType.choices)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    provider = models.CharField(max_length=32, blank=True)
+    source_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+    request_id = models.CharField(max_length=128, blank=True)
+    dedupe_key = models.CharField(max_length=64, unique=True, null=True, blank=True)
+
+    class Meta:
+        db_table = "identity_security_event"
+        ordering = ("-occurred_at",)
+        indexes = [
+            models.Index(fields=("user", "-occurred_at"), name="identity_event_user_time_idx"),
+            models.Index(fields=("event_type", "-occurred_at"), name="identity_event_type_time_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.event_type}:{self.user_id}"
