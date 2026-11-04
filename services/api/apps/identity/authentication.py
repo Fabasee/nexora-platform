@@ -128,7 +128,7 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
         request.nexora_mfa_verified = session.mfa_verified
         request.nexora_second_factor_type = session.second_factor_type
 
-        if email_verified and not was_email_verified:
+        if email_verified and (created or not was_email_verified):
             record_security_event(
                 user=user,
                 event_type=SecurityEvent.EventType.EMAIL_VERIFICATION_CONFIRMED,
@@ -136,7 +136,7 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
                 provider="firebase",
             )
 
-        if session.mfa_verified and not was_mfa_verified:
+        if session.mfa_verified and (created or not was_mfa_verified):
             record_security_event(
                 user=user,
                 event_type=SecurityEvent.EventType.MFA_AUTHENTICATED,
