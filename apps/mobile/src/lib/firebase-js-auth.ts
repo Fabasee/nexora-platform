@@ -85,6 +85,7 @@ export const firebaseJsAuthAdapter: AuthAdapter = {
   async completeTotpEnrollment() { return nativeMfaRequired(); },
   cancelTotpEnrollment() {},
   async completeTotpSignIn() { return nativeMfaRequired(); },
+  cancelMfaSignInChallenge() {},
   async removeMfaFactor() { return nativeMfaRequired(); },
 
   async signOut() {
