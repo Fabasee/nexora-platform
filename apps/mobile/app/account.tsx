@@ -18,7 +18,12 @@ export default function AccountScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [securityEvents, setSecurityEvents] = useState<NexoraSecurityEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [eventsError, setEventsError] = useState("");\n  const [sessions, setSessions] = useState<NexoraIdentitySession[]>([]);\n  const [sessionsLoading, setSessionsLoading] = useState(true);\n  const [sessionsError, setSessionsError] = useState("");\n  const [sessionBusyId, setSessionBusyId] = useState<string | null>(null);\n  const [sessionNotice, setSessionNotice] = useState("");
+  const [eventsError, setEventsError] = useState("");
+  const [sessions, setSessions] = useState<NexoraIdentitySession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState("");
+  const [sessionBusyId, setSessionBusyId] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState("");
 
   useEffect(() => {
     if (user) setEmailVerified(user.emailVerified);
@@ -63,7 +68,8 @@ export default function AccountScreen() {
       } finally {
         if (active) {
           setLoading(false);
-          setEventsLoading(false);\n          setSessionsLoading(false);
+          setEventsLoading(false);
+          setSessionsLoading(false);
         }
       }
     }
@@ -313,7 +319,12 @@ const styles = StyleSheet.create({
   verifyButton: { minHeight: 42, borderRadius: 11, backgroundColor: "#294C75", alignItems: "center", justifyContent: "center", marginTop: 8, paddingHorizontal: 12 },
   verifyText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
   verificationNotice: { color: "#42638B", fontSize: 10, lineHeight: 15, marginTop: 8 },
-  sessionIntro: { color: "#8794A6", fontSize: 9, lineHeight: 14, marginBottom: 8 },\n  sessionRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },\n  sessionCopy: { flex: 1, gap: 4 },\n  revokeButton: { minWidth: 62, minHeight: 32, borderRadius: 9, borderWidth: 1, borderColor: "#E7C9C7", alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },\n  revokeText: { color: "#A33D37", fontSize: 9, fontWeight: "900" },\n  eventRow: { flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },
+  sessionIntro: { color: "#8794A6", fontSize: 9, lineHeight: 14, marginBottom: 8 },
+  sessionRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },
+  sessionCopy: { flex: 1, gap: 4 },
+  revokeButton: { minWidth: 62, minHeight: 32, borderRadius: 9, borderWidth: 1, borderColor: "#E7C9C7", alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  revokeText: { color: "#A33D37", fontSize: 9, fontWeight: "900" },
+  eventRow: { flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },
   eventDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#5B8BBD", marginTop: 4 },
   eventCopy: { flex: 1, gap: 4 },
   eventTitle: { color: "#263E5E", fontSize: 11, fontWeight: "800" },
