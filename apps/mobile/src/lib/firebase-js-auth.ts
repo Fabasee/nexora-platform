@@ -1,16 +1,23 @@
 import {
   createUserWithEmailAndPassword,
+  getMultiFactorResolver,
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  TotpMultiFactorGenerator,
   updateProfile,
+  type MultiFactorError,
+  type MultiFactorResolver,
   type User,
 } from "firebase/auth";
 
 import { getFirebaseAuth, isFirebaseConfigured } from "./firebase";
-import type { AuthAdapter, AuthUser } from "./auth-types";
+import { MfaChallengeRequiredError } from "./auth-types";
+import type { AuthAdapter, AuthMfaFactor, AuthUser } from "./auth-types";
+
+let pendingSignInResolver: MultiFactorResolver | null = null;
 
 function toAuthUser(user: User): AuthUser {
   return {
@@ -24,7 +31,7 @@ function toAuthUser(user: User): AuthUser {
 }
 
 function nativeMfaRequired(): never {
-  throw new Error("TOTP management is currently available in the native Android/iOS app only.");
+  throw new Error("TOTP enrollment and factor management are currently available in the native Android/iOS app only.");
 }
 
 export const firebaseJsAuthAdapter: AuthAdapter = {
@@ -38,12 +45,30 @@ export const firebaseJsAuthAdapter: AuthAdapter = {
   },
 
   async signIn(email, password) {
-    const credential = await signInWithEmailAndPassword(
-      getFirebaseAuth(),
-      email.trim(),
-      password,
-    );
-    return toAuthUser(credential.user);
+    const auth = getFirebaseAuth();
+    pendingSignInResolver = null;
+    try {
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password,
+      );
+      return toAuthUser(credential.user);
+    } catch (error) {
+      if ((error as { code?: string })?.code !== "auth/multi-factor-auth-required") {
+        throw error;
+      }
+
+      const resolver = getMultiFactorResolver(auth, error as MultiFactorError);
+      pendingSignInResolver = resolver;
+      const factors: AuthMfaFactor[] = resolver.hints.map((hint) => ({
+        uid: hint.uid,
+        factorId: hint.factorId,
+        displayName: hint.displayName ?? null,
+        enrollmentTime: hint.enrollmentTime ?? null,
+      }));
+      throw new MfaChallengeRequiredError(factors);
+    }
   },
 
   async register(name, email, password) {
@@ -84,11 +109,36 @@ export const firebaseJsAuthAdapter: AuthAdapter = {
   async beginTotpEnrollment() { return nativeMfaRequired(); },
   async completeTotpEnrollment() { return nativeMfaRequired(); },
   cancelTotpEnrollment() {},
-  async completeTotpSignIn() { return nativeMfaRequired(); },
-  cancelMfaSignInChallenge() {},
+
+  async completeTotpSignIn(factorUid, verificationCode) {
+    const resolver = pendingSignInResolver;
+    if (!resolver) throw new Error("MFA_SIGN_IN_CHALLENGE_EXPIRED");
+
+    const factor = resolver.hints.find(
+      (hint) => hint.uid === factorUid && hint.factorId === "totp",
+    );
+    if (!factor) throw new Error("MFA_FACTOR_NOT_FOUND");
+
+    const normalizedCode = verificationCode.replace(/\\s+/g, "");
+    if (!/^\\d{6}$/.test(normalizedCode)) throw new Error("INVALID_TOTP_CODE");
+
+    const assertion = TotpMultiFactorGenerator.assertionForSignIn(
+      factor.uid,
+      normalizedCode,
+    );
+    const credential = await resolver.resolveSignIn(assertion);
+    pendingSignInResolver = null;
+    await credential.user.getIdToken(true);
+  },
+
+  cancelMfaSignInChallenge() {
+    pendingSignInResolver = null;
+  },
+
   async removeMfaFactor() { return nativeMfaRequired(); },
 
   async signOut() {
+    pendingSignInResolver = null;
     await signOut(getFirebaseAuth());
   },
 };
