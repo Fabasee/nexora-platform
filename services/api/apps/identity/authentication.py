@@ -14,6 +14,7 @@ from .models import IdentityProviderAccount, IdentitySession, SecurityEvent
 from .security import (
     auth_context_dedupe_key,
     authentication_dedupe_key,
+    mfa_authentication_dedupe_key,
     record_security_event,
 )
 from .services import IdentityAccessDenied, IdentityService, VerifiedIdentity
@@ -72,14 +73,20 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
             user=user, provider="firebase", provider_subject=subject
         )
         email_verified = claims.get("email_verified") is True
+        firebase_claims = claims.get("firebase")
+        firebase_claims = firebase_claims if isinstance(firebase_claims, dict) else {}
+        second_factor = firebase_claims.get("sign_in_second_factor")
+        # Firebase reserves this claim and sets it only when this sign-in
+        # completed a configured second factor. Never accept a client flag.
+        second_factor = second_factor if second_factor in {"phone", "totp"} else ""
+        mfa_verified = bool(second_factor)
+
         now = django_timezone.now()
         source_ip = request.META.get("REMOTE_ADDR") or None
         if source_ip and len(source_ip) > 45:
             source_ip = None
         user_agent = request.META.get("HTTP_USER_AGENT", "")[:512]
 
-        # Compare only with the immediately preceding session for this exact
-        # provider account. Missing values are not treated as a mismatch.
         previous_session = (
             IdentitySession.objects.filter(provider_account=provider_account)
             .order_by("-authenticated_at")
@@ -91,6 +98,8 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
             defaults={
                 "last_seen_at": now,
                 "email_verified": email_verified,
+                "mfa_verified": mfa_verified,
+                "second_factor_type": second_factor,
                 "source_ip": source_ip,
                 "user_agent": user_agent,
             },
@@ -99,19 +108,25 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
             raise AuthenticationFailed("This Nexora session has been revoked.")
 
         was_email_verified = session.email_verified
+        was_mfa_verified = session.mfa_verified
         updates = {}
         if session.last_seen_at < now - timedelta(minutes=5):
             updates.update(last_seen_at=now, source_ip=source_ip, user_agent=user_agent)
         if session.email_verified != email_verified:
             updates["email_verified"] = email_verified
+        if mfa_verified and not session.mfa_verified:
+            updates.update(mfa_verified=True, second_factor_type=second_factor)
         if updates:
             IdentitySession.objects.filter(pk=session.pk, revoked_at__isnull=True).update(**updates)
             for field, value in updates.items():
                 setattr(session, field, value)
         if not IdentitySession.objects.filter(pk=session.pk, revoked_at__isnull=True).exists():
             raise AuthenticationFailed("This Nexora session has been revoked.")
+
         request.nexora_session_id = session.pk
         request.nexora_email_verified = email_verified
+        request.nexora_mfa_verified = session.mfa_verified
+        request.nexora_second_factor_type = session.second_factor_type
 
         if email_verified and not was_email_verified:
             record_security_event(
@@ -121,14 +136,22 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
                 provider="firebase",
             )
 
+        if session.mfa_verified and not was_mfa_verified:
+            record_security_event(
+                user=user,
+                event_type=SecurityEvent.EventType.MFA_AUTHENTICATED,
+                request=request,
+                provider="firebase",
+                dedupe_key=mfa_authentication_dedupe_key(session.pk),
+            )
+
         if created:
-            dedupe_key = authentication_dedupe_key(user.pk, "firebase", authenticated_at)
             record_security_event(
                 user=user,
                 event_type=SecurityEvent.EventType.AUTHENTICATED,
                 request=request,
                 provider="firebase",
-                dedupe_key=dedupe_key,
+                dedupe_key=authentication_dedupe_key(user.pk, "firebase", authenticated_at),
             )
             if previous_session is not None:
                 ip_changed = bool(
