@@ -10,7 +10,7 @@ from apps.integrations.firebase_admin.app import (
     FirebaseAdminAppFactory,
     FirebaseConfigurationError,
 )
-from .models import IdentitySession, SecurityEvent
+from .models import IdentityProviderAccount, IdentitySession, SecurityEvent
 from .security import authentication_dedupe_key, record_security_event
 from .services import IdentityAccessDenied, IdentityService, VerifiedIdentity
 
@@ -64,7 +64,7 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
         except IdentityAccessDenied:
             raise AuthenticationFailed("This Nexora account is not active.") from None
 
-        provider_account = user.provider_accounts.get(provider="firebase")
+        provider_account = IdentityProviderAccount.objects.get(\n            user=user, provider="firebase", provider_subject=subject\n        )
         now = django_timezone.now()
         source_ip = request.META.get("REMOTE_ADDR") or None
         if source_ip and len(source_ip) > 45:
@@ -90,7 +90,7 @@ class FirebaseIdentityAuthentication(BaseAuthentication):
                 source_ip=source_ip,
                 user_agent=user_agent,
             )
-        request.nexora_session_id = session.pk
+        if not IdentitySession.objects.filter(pk=session.pk, revoked_at__isnull=True).exists():\n            raise AuthenticationFailed("This Nexora session has been revoked.")\n        request.nexora_session_id = session.pk
 
         if created:
             dedupe_key = authentication_dedupe_key(user.pk, "firebase", authenticated_at)
