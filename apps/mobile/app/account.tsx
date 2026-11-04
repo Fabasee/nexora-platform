@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { reload } from "firebase/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,6 +16,10 @@ export default function AccountScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (user) setEmailVerified(user.emailVerified);
+  }, [user]);
 
   useEffect(() => {
     let active = true;
@@ -52,7 +49,29 @@ export default function AccountScreen() {
     return () => { active = false; };
   }, [user, refreshKey]);
 
-  async function handleVerification() {\n    setVerificationBusy(true);\n    setVerificationNotice("");\n    try {\n      if (emailVerified) {\n        await reload(user);\n        setEmailVerified(user.emailVerified);\n        setVerificationNotice(user.emailVerified ? "Email sudah terverifikasi." : "Status verifikasi belum berubah. Periksa email Anda.");\n      } else {\n        await sendVerificationEmail();\n        setVerificationNotice("Tautan verifikasi telah dikirim. Periksa kotak masuk atau folder spam.");\n      }\n    } catch {\n      setVerificationNotice("Permintaan verifikasi belum berhasil. Coba kembali beberapa saat lagi.");\n    } finally {\n      setVerificationBusy(false);\n    }\n  }\n\n  async function handleSignOut() {
+  async function handleVerification() {
+    if (!user) return;
+    setVerificationBusy(true);
+    setVerificationNotice("");
+    try {
+      if (emailVerified) {
+        await reload(user);
+        setEmailVerified(user.emailVerified);
+        setVerificationNotice(user.emailVerified
+          ? "Email sudah terverifikasi."
+          : "Status verifikasi belum berubah. Periksa email Anda.");
+      } else {
+        await sendVerificationEmail();
+        setVerificationNotice("Tautan verifikasi telah dikirim. Periksa kotak masuk atau folder spam.");
+      }
+    } catch {
+      setVerificationNotice("Permintaan verifikasi belum berhasil. Coba kembali beberapa saat lagi.");
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
+
+  async function handleSignOut() {
     try {
       await signOut();
       router.replace("/");
@@ -91,7 +110,10 @@ export default function AccountScreen() {
           </View>
           <Text style={styles.name}>{user.displayName ?? "Nexora member"}</Text>
           <Text style={styles.email}>{user.email ?? "Email not provided"}</Text>
-          <View style={styles.statusPill}><View style={styles.statusDot} /><Text style={styles.statusText}>Firebase session active</Text></View>
+          <View style={styles.statusPill}>
+            <View style={styles.statusDot} />
+            <Text style={styles.statusText}>Firebase session active</Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -118,7 +140,15 @@ export default function AccountScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Security</Text>
           <InfoRow label="Sign-in method" value="Email and password" />
-          <InfoRow label="Email verification" value={emailVerified ? "Verified" : "Not verified"} />\n          {!emailVerified && (\n            <Pressable disabled={verificationBusy} onPress={handleVerification} style={styles.verifyButton}>\n              {verificationBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.verifyText}>Send verification email</Text>}\n            </Pressable>\n          )}\n          {emailVerified && (\n            <Pressable disabled={verificationBusy} onPress={handleVerification} style={styles.retry}>\n              <Text style={styles.retryText}>Refresh verification status</Text>\n            </Pressable>\n          )}\n          {!!verificationNotice && <Text accessibilityLiveRegion="polite" style={styles.verificationNotice}>{verificationNotice}</Text>}
+          <InfoRow label="Email verification" value={emailVerified ? "Verified" : "Not verified"} />
+          <Pressable disabled={verificationBusy} onPress={handleVerification} style={styles.verifyButton}>
+            {verificationBusy
+              ? <ActivityIndicator color="#FFFFFF" />
+              : <Text style={styles.verifyText}>{emailVerified ? "Refresh verification status" : "Send verification email"}</Text>}
+          </Pressable>
+          {!!verificationNotice && (
+            <Text accessibilityLiveRegion="polite" style={styles.verificationNotice}>{verificationNotice}</Text>
+          )}
           <InfoRow label="Last token refresh" value="Managed securely by Firebase" />
         </View>
 
@@ -165,7 +195,10 @@ const styles = StyleSheet.create({
   error: { color: "#B42318", fontSize: 11, lineHeight: 17 },
   retry: { alignSelf: "flex-start", marginTop: 8, paddingVertical: 7 },
   retryText: { color: "#294C75", fontSize: 11, fontWeight: "800" },
-  verifyButton: { minHeight: 42, borderRadius: 11, backgroundColor: "#294C75", alignItems: "center", justifyContent: "center", marginTop: 8, paddingHorizontal: 12 },\n  verifyText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },\n  verificationNotice: { color: "#42638B", fontSize: 10, lineHeight: 15, marginTop: 8 },\n  signOut: { minHeight: 49, borderRadius: 13, borderWidth: 1, borderColor: "#E7C9C7", alignItems: "center", justifyContent: "center", marginTop: 20, backgroundColor: "#FFF9F8" },
+  verifyButton: { minHeight: 42, borderRadius: 11, backgroundColor: "#294C75", alignItems: "center", justifyContent: "center", marginTop: 8, paddingHorizontal: 12 },
+  verifyText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+  verificationNotice: { color: "#42638B", fontSize: 10, lineHeight: 15, marginTop: 8 },
+  signOut: { minHeight: 49, borderRadius: 13, borderWidth: 1, borderColor: "#E7C9C7", alignItems: "center", justifyContent: "center", marginTop: 20, backgroundColor: "#FFF9F8" },
   signOutText: { color: "#A33D37", fontSize: 12, fontWeight: "900" },
   footer: { color: "#9AA6B5", fontSize: 9, lineHeight: 15, textAlign: "center", marginTop: 17 },
   center: { flex: 1, justifyContent: "center", padding: 25 },
