@@ -31,6 +31,7 @@ export default function AccountScreen() {
   const [mfaNotice, setMfaNotice] = useState("");
   const [totpDraft, setTotpDraft] = useState<{ secretKey: string; otpauthUrl: string } | null>(null);
   const [totpCode, setTotpCode] = useState("");
+  const [mfaCurrentPassword, setMfaCurrentPassword] = useState("");
 
   useEffect(() => {
     if (user) setEmailVerified(user.emailVerified);
@@ -152,7 +153,8 @@ export default function AccountScreen() {
     setMfaError("");
     setMfaNotice("");
     try {
-      const draft = await beginTotpEnrollment();
+      if (!mfaCurrentPassword) { setMfaError("Masukkan kata sandi saat ini untuk verifikasi ulang."); return; }
+      const draft = await beginTotpEnrollment(mfaCurrentPassword);
       setTotpDraft(draft);
       setTotpCode("");
       setMfaNotice("Simpan secret ini di aplikasi authenticator. Secret hanya ditampilkan selama proses setup.");
@@ -191,6 +193,7 @@ export default function AccountScreen() {
   }
 
   function handleRemoveTotp(factor: AuthMfaFactor) {
+    if (!mfaCurrentPassword) { setMfaError("Masukkan kata sandi saat ini untuk verifikasi ulang sebelum menghapus faktor."); return; }
     Alert.alert(
       "Hapus faktor MFA?",
       "Perangkat authenticator ini tidak lagi dapat digunakan untuk verifikasi dua langkah.",
@@ -204,7 +207,8 @@ export default function AccountScreen() {
             setMfaError("");
             setMfaNotice("");
             try {
-              await removeMfaFactor(factor.uid);
+              await removeMfaFactor(factor.uid, mfaCurrentPassword);
+              setMfaCurrentPassword("");
               setMfaFactors(await getMfaFactors());
               setMfaNotice("Faktor authenticator telah dihapus.");
             } catch {
@@ -298,6 +302,17 @@ export default function AccountScreen() {
             <ActivityIndicator color="#294C75" style={styles.loader} />
           ) : (
             <>
+              <Text style={styles.label}>CURRENT PASSWORD (RE-AUTHENTICATION)</Text>
+              <TextInput
+                value={mfaCurrentPassword}
+                onChangeText={setMfaCurrentPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                placeholder="Enter your current password"
+                placeholderTextColor="#9AA6B5"
+                style={styles.totpInput}
+                editable={!mfaBusy}
+              />
               <Text style={styles.sessionIntro}>
                 Faktor authenticator terdaftar: {mfaFactors.length}. Pendaftaran memerlukan email terverifikasi dan Firebase Identity Platform dengan TOTP diaktifkan.
               </Text>
