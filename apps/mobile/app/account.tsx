@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { reload } from "firebase/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { fetchCurrentAccount, type NexoraAccount } from "../src/lib/api";
+import { fetchCurrentAccount, fetchSecurityEvents, type NexoraAccount, type NexoraSecurityEvent } from "../src/lib/api";
 import { useAuth } from "../src/providers/AuthProvider";
 
 export default function AccountScreen() {
@@ -15,7 +15,7 @@ export default function AccountScreen() {
   const [account, setAccount] = useState<NexoraAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);\n  const [securityEvents, setSecurityEvents] = useState<NexoraSecurityEvent[]>([]);\n  const [eventsLoading, setEventsLoading] = useState(true);\n  const [eventsError, setEventsError] = useState("");
 
   useEffect(() => {
     if (user) setEmailVerified(user.emailVerified);
@@ -34,6 +34,14 @@ export default function AccountScreen() {
         const token = await user.getIdToken();
         const result = await fetchCurrentAccount(token);
         if (active) setAccount(result);
+        try {
+          const events = await fetchSecurityEvents(token);
+          if (active) setSecurityEvents(events);
+        } catch {
+          if (active) setEventsError("Riwayat keamanan belum dapat dimuat.");
+        } finally {
+          if (active) setEventsLoading(false);
+        }
       } catch (requestError) {
         if (active) {
           const code = (requestError as { status?: number })?.status;
@@ -42,7 +50,10 @@ export default function AccountScreen() {
             : "Informasi akun belum dapat dimuat. Periksa API dan koneksi Anda.");
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setEventsLoading(false);
+        }
       }
     }
     void loadAccount();
@@ -152,6 +163,30 @@ export default function AccountScreen() {
           <InfoRow label="Last token refresh" value="Managed securely by Firebase" />
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent security activity</Text>
+          {eventsLoading ? (
+            <ActivityIndicator color="#294C75" style={styles.loader} />
+          ) : eventsError ? (
+            <Text style={styles.eventError}>{eventsError}</Text>
+          ) : securityEvents.length === 0 ? (
+            <Text style={styles.eventEmpty}>Belum ada aktivitas keamanan yang tercatat.</Text>
+          ) : (
+            securityEvents.slice(0, 10).map((event) => (
+              <View key={event.id} style={styles.eventRow}>
+                <View style={styles.eventDot} />
+                <View style={styles.eventCopy}>
+                  <Text style={styles.eventTitle}>{formatEventType(event.event_type)}</Text>
+                  <Text style={styles.eventMeta}>
+                    {new Date(event.occurred_at).toLocaleString()} · {event.provider || "Nexora"}
+                  </Text>
+                  {!!event.source_ip && <Text style={styles.eventMeta}>IP: {event.source_ip}</Text>}
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
         <Pressable onPress={handleSignOut} style={styles.signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
@@ -159,6 +194,18 @@ export default function AccountScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function formatEventType(eventType: string): string {
+  switch (eventType) {
+    case "identity.authenticated": return "Successful sign-in";
+    case "identity.account_viewed": return "Account viewed";
+    case "identity.verification_requested": return "Verification email requested";
+    case "identity.password_reset_requested": return "Password reset requested";
+    case "identity.session_revoked": return "Session revoked";
+    case "identity.credential_changed": return "Credential changed";
+    default: return "Security activity";
+  }
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -198,6 +245,13 @@ const styles = StyleSheet.create({
   verifyButton: { minHeight: 42, borderRadius: 11, backgroundColor: "#294C75", alignItems: "center", justifyContent: "center", marginTop: 8, paddingHorizontal: 12 },
   verifyText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
   verificationNotice: { color: "#42638B", fontSize: 10, lineHeight: 15, marginTop: 8 },
+  eventRow: { flexDirection: "row", gap: 10, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },
+  eventDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#5B8BBD", marginTop: 4 },
+  eventCopy: { flex: 1, gap: 4 },
+  eventTitle: { color: "#263E5E", fontSize: 11, fontWeight: "800" },
+  eventMeta: { color: "#8794A6", fontSize: 9, lineHeight: 14 },
+  eventEmpty: { color: "#8794A6", fontSize: 10, lineHeight: 16, paddingVertical: 8 },
+  eventError: { color: "#A33D37", fontSize: 10, lineHeight: 16, paddingVertical: 8 },
   signOut: { minHeight: 49, borderRadius: 13, borderWidth: 1, borderColor: "#E7C9C7", alignItems: "center", justifyContent: "center", marginTop: 20, backgroundColor: "#FFF9F8" },
   signOutText: { color: "#A33D37", fontSize: 12, fontWeight: "900" },
   footer: { color: "#9AA6B5", fontSize: 9, lineHeight: 15, textAlign: "center", marginTop: 17 },
