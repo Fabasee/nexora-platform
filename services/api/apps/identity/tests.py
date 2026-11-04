@@ -1,7 +1,9 @@
 from unittest.mock import patch
 
-from django.test import TestCase\nfrom django.utils import timezone
-from rest_framework.exceptions import AuthenticationFailed\nfrom rest_framework.test import APIRequestFactory
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.test import APIRequestFactory
 
 from .authentication import FirebaseIdentityAuthentication
 
