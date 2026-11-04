@@ -157,6 +157,7 @@ export default function AccountScreen() {
       const draft = await beginTotpEnrollment(mfaCurrentPassword);
       setTotpDraft(draft);
       setTotpCode("");
+      setMfaCurrentPassword("");
       setMfaNotice("Simpan secret ini di aplikasi authenticator. Secret hanya ditampilkan selama proses setup.");
     } catch (requestError) {
       const code = (requestError as { message?: string })?.message;
