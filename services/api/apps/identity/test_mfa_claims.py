@@ -110,4 +110,4 @@ class VerifiedMFAPermissionTests(TestCase):
         self.assertFalse(VerifiedMFARequired().has_permission(Request(), None))
         del Request.nexora_mfa_verified
         Request.mfa_verified = True
-        self.assertFalse(VerifiedMFARequired().has_permission(Request(), None)
+        self.assertFalse(VerifiedMFARequired().has_permission(Request(), None))
