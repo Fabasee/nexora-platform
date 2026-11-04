@@ -55,6 +55,7 @@ class FirebaseIdentityAuthenticationTests(TestCase):
         verify_token.return_value = {
             "uid": "firebase-auth-subject",
             "auth_time": 1_798_000_000,
+            "email_verified": True,
         }
         request = APIRequestFactory().get(
             "/api/v1/private/",
@@ -66,6 +67,8 @@ class FirebaseIdentityAuthenticationTests(TestCase):
         self.assertIsNone(credentials)
         self.assertTrue(user.is_active)
         self.assertEqual(user.provider_accounts.get().provider_subject, "firebase-auth-subject")
+        self.assertTrue(request.nexora_email_verified)
+        self.assertTrue(IdentitySession.objects.get(provider_account__user=user).email_verified)
         verify_token.assert_called_once_with(
             "valid-token",
             app=get_app.return_value,
@@ -253,3 +256,38 @@ class RevokedIdentitySessionTests(TestCase):
 
         with self.assertRaises(AuthenticationFailed):
             authenticator.authenticate(request)
+
+
+
+class VerifiedEmailClaimSyncTests(TestCase):
+    @patch("apps.identity.authentication.firebase_auth.verify_id_token")
+    @patch("apps.identity.authentication.FirebaseAdminAppFactory.get_app")
+    def test_verification_claim_updates_existing_session_and_records_event(self, get_app, verify_token):
+        get_app.return_value = object()
+        verify_token.return_value = {
+            "uid": "email-verified-transition",
+            "auth_time": 1_798_000_000,
+            "email_verified": False,
+        }
+        request = APIRequestFactory().get(
+            "/api/v1/private/",
+            HTTP_AUTHORIZATION="Bearer valid-token",
+        )
+        authenticator = FirebaseIdentityAuthentication()
+        user, _ = authenticator.authenticate(request)
+        session = IdentitySession.objects.get(provider_account__user=user)
+        self.assertFalse(session.email_verified)
+
+        verify_token.return_value = {
+            "uid": "email-verified-transition",
+            "auth_time": 1_798_000_000,
+            "email_verified": True,
+        }
+        authenticator.authenticate(request)
+        session.refresh_from_db()
+
+        self.assertTrue(session.email_verified)
+        self.assertTrue(SecurityEvent.objects.filter(
+            user=user,
+            event_type=SecurityEvent.EventType.EMAIL_VERIFICATION_CONFIRMED,
+        ).exists())
