@@ -82,18 +82,16 @@ export default function AccountScreen() {
     setVerificationBusy(true);
     setVerificationNotice("");
     try {
-      if (emailVerified || account?.email_verified) {
-        await reload(user);
-        const refreshedToken = await user.getIdToken(true);
-        const refreshedAccount = await fetchCurrentAccount(refreshedToken);
-        setAccount(refreshedAccount);
-        setEmailVerified(refreshedAccount.email_verified);
-        setVerificationNotice(refreshedAccount.email_verified
-          ? "Email sudah terverifikasi dan status server telah diperbarui."
-          : "Status verifikasi belum berubah. Periksa email Anda.");
+      await reload(user);
+      const refreshedToken = await user.getIdToken(true);
+      const refreshedAccount = await fetchCurrentAccount(refreshedToken);
+      setAccount(refreshedAccount);
+      setEmailVerified(refreshedAccount.email_verified);
+      if (refreshedAccount.email_verified) {
+        setVerificationNotice("Email sudah terverifikasi dan status server telah diperbarui.");
       } else {
         await sendVerificationEmail();
-        setVerificationNotice("Tautan verifikasi telah dikirim. Periksa kotak masuk atau folder spam.");
+        setVerificationNotice("Email belum terverifikasi. Tautan verifikasi baru telah dikirim.");
       }
     } catch {
       setVerificationNotice("Permintaan verifikasi belum berhasil. Coba kembali beberapa saat lagi.");
