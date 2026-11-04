@@ -39,9 +39,9 @@ export type AuthAdapter = {
   resetPassword: (email: string) => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
   getMfaFactors: () => Promise<AuthMfaFactor[]>;
-  beginTotpEnrollment: () => Promise<TotpEnrollmentDraft>;
+  beginTotpEnrollment: (currentPassword: string) => Promise<TotpEnrollmentDraft>;
   completeTotpEnrollment: (verificationCode: string, displayName?: string) => Promise<void>;
   completeTotpSignIn: (factorUid: string, verificationCode: string) => Promise<void>;
-  removeMfaFactor: (factorUid: string) => Promise<void>;
+  removeMfaFactor: (factorUid: string, currentPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
