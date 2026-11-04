@@ -198,7 +198,7 @@ export default function AccountScreen() {
     }
   }
 
-  function handleRemoveTotp(factor: AuthMfaFactor) {
+  function handleRemoveMfaFactor(factor: AuthMfaFactor) {
     if (!mfaCurrentPassword) { setMfaError("Masukkan kata sandi saat ini untuk verifikasi ulang sebelum menghapus faktor."); return; }
     Alert.alert(
       "Hapus faktor MFA?",
@@ -325,10 +325,10 @@ export default function AccountScreen() {
               {mfaFactors.map((factor) => (
                 <View key={factor.uid} style={styles.mfaFactorRow}>
                   <View style={styles.sessionCopy}>
-                    <Text style={styles.eventTitle}>{factor.displayName || "Authenticator app"}</Text>
-                    <Text style={styles.eventMeta}>TOTP · {factor.enrollmentTime ? new Date(factor.enrollmentTime).toLocaleString() : "Enrolled"}</Text>
+                    <Text style={styles.eventTitle}>{factor.displayName || `${factor.factorId.toUpperCase()} factor`}</Text>
+                    <Text style={styles.eventMeta}>{factor.factorId.toUpperCase()} · {factor.enrollmentTime ? new Date(factor.enrollmentTime).toLocaleString() : "Enrolled"}</Text>
                   </View>
-                  <Pressable disabled={mfaBusy} onPress={() => handleRemoveTotp(factor)} style={styles.revokeButton}>
+                  <Pressable disabled={mfaBusy} onPress={() => handleRemoveMfaFactor(factor)} style={styles.revokeButton}>
                     <Text style={styles.revokeText}>Remove</Text>
                   </Pressable>
                 </View>
