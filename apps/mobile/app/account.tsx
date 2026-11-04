@@ -8,7 +8,7 @@ import { useAuth } from "../src/providers/AuthProvider";
 import type { AuthMfaFactor } from "../src/lib/auth-types";
 
 export default function AccountScreen() {
-  const { user, status, signOut, sendVerificationEmail, getMfaFactors, beginTotpEnrollment, completeTotpEnrollment, removeMfaFactor } = useAuth();
+  const { user, status, signOut, sendVerificationEmail, getMfaFactors, beginTotpEnrollment, completeTotpEnrollment, cancelTotpEnrollment, removeMfaFactor } = useAuth();
   const [emailVerified, setEmailVerified] = useState(user?.emailVerified ?? false);
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
@@ -29,7 +29,7 @@ export default function AccountScreen() {
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaError, setMfaError] = useState("");
   const [mfaNotice, setMfaNotice] = useState("");
-  const [totpDraft, setTotpDraft] = useState<{ secretKey: string; otpauthUrl: string } | null>(null);
+  const [totpDraft, setTotpDraft] = useState<{ secretKey: string } | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [mfaCurrentPassword, setMfaCurrentPassword] = useState("");
 
@@ -359,7 +359,7 @@ export default function AccountScreen() {
                   <Pressable disabled={mfaBusy || totpCode.length !== 6} onPress={handleCompleteTotp} style={[styles.verifyButton, (mfaBusy || totpCode.length !== 6) && styles.disabledButton]}>
                     {mfaBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.verifyText}>Verify and enable MFA</Text>}
                   </Pressable>
-                  <Pressable disabled={mfaBusy} onPress={() => { setTotpDraft(null); setTotpCode(""); }} style={styles.cancelTotp}>
+                  <Pressable disabled={mfaBusy} onPress={() => { cancelTotpEnrollment(); setTotpDraft(null); setTotpCode(""); }} style={styles.cancelTotp}>
                     <Text style={styles.inlineText}>Cancel setup</Text>
                   </Pressable>
                 </View>
