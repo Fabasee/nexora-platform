@@ -359,7 +359,7 @@ export default function AccountScreen() {
                   <Pressable disabled={mfaBusy || totpCode.length !== 6} onPress={handleCompleteTotp} style={[styles.verifyButton, (mfaBusy || totpCode.length !== 6) && styles.disabledButton]}>
                     {mfaBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.verifyText}>Verify and enable MFA</Text>}
                   </Pressable>
-                  <Pressable disabled={mfaBusy} onPress={() => { cancelTotpEnrollment(); setTotpDraft(null); setTotpCode(""); }} style={styles.cancelTotp}>
+                  <Pressable disabled={mfaBusy} onPress={() => { cancelTotpEnrollment(); setTotpDraft(null); setTotpCode(""); setMfaCurrentPassword(""); }} style={styles.cancelTotp}>
                     <Text style={styles.inlineText}>Cancel setup</Text>
                   </Pressable>
                 </View>
@@ -493,6 +493,8 @@ const styles = StyleSheet.create({
   statusText: { color: "#D5E4F4", fontSize: 9, fontWeight: "700" },
   section: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E8EDF3", borderRadius: 17, padding: 17, marginTop: 15 },
   sectionTitle: { color: "#1B2D46", fontSize: 13, fontWeight: "900", marginBottom: 9 },
+  label: { color: "#62738A", fontSize: 9, fontWeight: "900", letterSpacing: 1.1, marginBottom: 7, marginTop: 9 },
+  inlineText: { color: "#42638B", fontSize: 12, fontWeight: "700" },
   infoRow: { borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 11, gap: 5 },
   infoLabel: { color: "#8794A6", fontSize: 10, fontWeight: "700" },
   infoValue: { color: "#263E5E", fontSize: 11, fontWeight: "700" },
