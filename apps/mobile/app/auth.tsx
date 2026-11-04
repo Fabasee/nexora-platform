@@ -99,7 +99,7 @@ export default function AuthScreen() {
         <View style={styles.configCard}>
           <Text style={styles.brand}>NEXORA</Text>
           <Text style={styles.title}>Firebase setup required</Text>
-          <Text style={styles.subtitle}>Lengkapi konfigurasi Firebase client di file .env aplikasi mobile sebelum mengaktifkan autentikasi.</Text>
+          <Text style={styles.subtitle}>Tambahkan konfigurasi Firebase native untuk Android/iOS, atau lengkapi konfigurasi web di file .env. Setelah menambahkan file native, buat ulang Development Build.</Text>
           <Pressable onPress={() => router.replace("/")} style={styles.secondaryButton}>
             <Text style={styles.secondaryText}>Back to home</Text>
           </Pressable>
