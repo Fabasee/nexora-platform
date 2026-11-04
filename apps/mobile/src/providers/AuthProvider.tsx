@@ -25,6 +25,7 @@ type AuthContextValue = {
   getMfaFactors: () => Promise<AuthMfaFactor[]>;
   beginTotpEnrollment: (currentPassword: string) => Promise<TotpEnrollmentDraft>;
   completeTotpEnrollment: (verificationCode: string, displayName?: string) => Promise<void>;
+  cancelTotpEnrollment: () => void;
   completeTotpSignIn: (factorUid: string, verificationCode: string) => Promise<void>;
   removeMfaFactor: (factorUid: string, currentPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -83,6 +84,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await firebaseAuthAdapter.completeTotpEnrollment(verificationCode, displayName);
   };
 
+  const cancelTotpEnrollment = () => firebaseAuthAdapter.cancelTotpEnrollment();
+
   const completeTotpSignIn = async (factorUid: string, verificationCode: string) => {
     await firebaseAuthAdapter.completeTotpSignIn(factorUid, verificationCode);
   };
@@ -106,6 +109,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       getMfaFactors,
       beginTotpEnrollment,
       completeTotpEnrollment,
+      cancelTotpEnrollment,
       completeTotpSignIn,
       removeMfaFactor,
       signOut,
