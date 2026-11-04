@@ -40,14 +40,20 @@ docs/development/        Local setup and contribution workflow
 ## Implemented foundation
 
 - Expo mobile shell with a responsive Nexora ecosystem home screen.
-- Firebase client initialization and authentication-state provider.\n- Email/password sign-in, registration, password reset, and account overview screens.
+- Firebase client initialization and authentication-state provider.
+- Email/password sign-in, registration, password reset, and account overview screens.
 - Typed API client for the authenticated product catalog.
 - Django API with a custom UUID-based Nexora user model.
 - Firebase ID-token verification with revocation checks.
 - Provider-neutral identity resolution with a unique provider-subject constraint.
 - Product registry, product membership, and time-bounded feature entitlements.
 - Scoped entitlement checks that fail closed when scope does not match.
-- Authenticated current-account endpoint at `GET /api/v1/account/me/`.\n- Authenticated product catalog endpoint at `GET /api/v1/products/`.
+- Authenticated current-account endpoint at `GET /api/v1/account/me/`.
+- Account-scoped security-event history at `GET /api/v1/account/security-events/`.
+- Server-managed identity sessions with per-session revocation.
+- Server-verified email status and verified-email enforcement for the product catalog.
+- Scoped rate limit for session revocation operations.
+- Authenticated product catalog endpoint at `GET /api/v1/products/`.
 - Django migrations, focused identity/access tests, and GitHub Actions checks.
 
 ## Local checks
@@ -74,7 +80,7 @@ npx expo install --check
 
 Firebase client configuration is public application metadata, not an authorization mechanism. The API verifies ID tokens using Firebase Admin. Firebase Admin service-account credentials and Django secrets must remain outside source control.
 
-The current mobile authentication layer supports Firebase email/password registration, sign-in, password reset, local sign-out, and account overview. Production deployment configuration and additional account-security controls are still pending. Product-specific data APIs and product roles must be implemented in their owning domains.
+The current mobile authentication layer supports Firebase email/password registration, sign-in, password reset, email verification, local sign-out, account overview, security-event history, and device-session revocation. The API enforces verified email for the product catalog. MFA enrollment and challenge flows, production abuse controls, shared-cache rate limiting, retention policy, and production deployment review are still pending. Product-specific data APIs and product roles must be implemented in their owning domains.
 
 ## Project status
 
