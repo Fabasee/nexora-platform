@@ -1,8 +1,6 @@
 import {
   createUserWithEmailAndPassword,
-  EmailAuthProvider,
   onAuthStateChanged,
-  reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -85,6 +83,7 @@ export const firebaseJsAuthAdapter: AuthAdapter = {
   async getMfaFactors() { return nativeMfaRequired(); },
   async beginTotpEnrollment() { return nativeMfaRequired(); },
   async completeTotpEnrollment() { return nativeMfaRequired(); },
+  cancelTotpEnrollment() {},
   async completeTotpSignIn() { return nativeMfaRequired(); },
   async removeMfaFactor() { return nativeMfaRequired(); },
 
