@@ -15,6 +15,17 @@ The API never accepts a user UUID in these requests. Session ownership is enforc
 
 The session list marks the current session based on the session resolved by the authentication layer. The mobile UI does not offer revocation of the current session; users can sign out instead.
 
+## Authentication-context signals
+
+When a new Firebase-authenticated Nexora session is created, Nexora compares available IP and User-Agent values with the immediately preceding session for the same provider account. If either available value differs, it records `identity.auth_context_changed` in the security-event history.
+
+- This is an informational audit signal, not a risk score or proof of compromise.
+- Mobile network changes, VPNs, proxies, app versions, browsers, or devices can produce a difference.
+- Missing values are not treated as a mismatch.
+- The event never blocks login, revokes sessions, or changes permissions.
+- Events are deduplicated by the new Nexora session ID.
+- IP and User-Agent are untrusted metadata; trusted proxy handling must be configured before using IP for operational analytics.
+
 ## Revocation semantics
 
 - Revocation blocks access to Nexora APIs for that session.
@@ -36,7 +47,7 @@ The session list marks the current session based on the session resolved by the 
 1. Add rate limits to session listing and revoke operations.
 2. Add a confirmation/step-up requirement before revoking sessions in sensitive contexts.
 3. Add session expiration and cleanup policy based on product security requirements.
-4. Alert on suspicious session churn and unusual geography only after trusted proxy and privacy policies are configured.
+4. Design risk scoring only after trusted proxy, privacy, and false-positive policies are configured.
 5. Consider a transactional outbox for reliable audit-event delivery under database failures.
 6. Test concurrent revoke-vs-request behavior against the production database engine.
 
