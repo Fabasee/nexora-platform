@@ -1,12 +1,10 @@
 from unittest.mock import patch
 
 from django.test import TestCase
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.test import APIRequestFactory, APIClient
+from rest_framework.test import APIClient, APIRequestFactory
 
 from apps.identity.authentication import FirebaseIdentityAuthentication
 from apps.identity.models import IdentitySession, SecurityEvent
-from apps.identity.services import IdentityService, VerifiedIdentity
 from apps.identity.permissions import VerifiedMFARequired
 
 
@@ -111,3 +109,26 @@ class VerifiedMFAPermissionTests(TestCase):
         del Request.nexora_mfa_verified
         Request.mfa_verified = True
         self.assertFalse(VerifiedMFARequired().has_permission(Request(), None))
+
+
+
+class MFAAccountApiTests(TestCase):
+    @patch("apps.identity.authentication.firebase_auth.verify_id_token")
+    @patch("apps.identity.authentication.FirebaseAdminAppFactory.get_app")
+    def test_account_endpoint_reports_server_verified_mfa_claim(self, get_app, verify_token):
+        get_app.return_value = object()
+        verify_token.return_value = {
+            "uid": "mfa-account-endpoint-subject",
+            "auth_time": 1_798_000_004,
+            "email_verified": True,
+            "firebase": {"sign_in_second_factor": "totp"},
+        }
+
+        response = APIClient().get(
+            "/api/v1/account/me/",
+            HTTP_AUTHORIZATION="Bearer valid-token",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["mfa_verified"])
+        self.assertEqual(response.data["second_factor_type"], "totp")
