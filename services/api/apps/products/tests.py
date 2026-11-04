@@ -1,7 +1,9 @@
+from unittest.mock import patch
+
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.identity.models import NexoraUser
+from apps.identity.models import IdentityProviderAccount, NexoraUser
 from .models import Entitlement, Product, ProductMembership
 from .services import ProductAccessDenied, ProductAccessService
 
@@ -92,6 +94,11 @@ class ProductAccessApiTests(TestCase):
     def setUp(self):
         self.user = NexoraUser.objects.create_user()
         self.product = Product.objects.create(key="dignity", name="Dignity")
+        IdentityProviderAccount.objects.create(
+            user=self.user,
+            provider="firebase",
+            provider_subject="product-api-user",
+        )
         ProductMembership.objects.create(
             user=self.user,
             product=self.product,
@@ -103,12 +110,48 @@ class ProductAccessApiTests(TestCase):
         response = self.client.get("/api/v1/products/")
         self.assertEqual(response.status_code, 401)
 
-    def test_authenticated_user_only_sees_active_memberships(self):
+    def test_authenticated_user_without_verified_email_is_denied(self):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.get("/api/v1/products/")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data["detail"].code, "email_verification_required")
+
+    @patch("apps.identity.authentication.firebase_auth.verify_id_token")
+    @patch("apps.identity.authentication.FirebaseAdminAppFactory.get_app")
+    def test_verified_firebase_identity_can_access_product_catalog(self, get_app, verify_token):
+        get_app.return_value = object()
+        verify_token.return_value = {
+            "uid": "product-api-user",
+            "auth_time": 1_798_000_000,
+            "email_verified": True,
+        }
+
+        response = self.client.get(
+            "/api/v1/products/",
+            HTTP_AUTHORIZATION="Bearer valid-token",
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["results"], [
             {"key": "dignity", "name": "Dignity", "description": ""},
         ])
+
+    @patch("apps.identity.authentication.firebase_auth.verify_id_token")
+    @patch("apps.identity.authentication.FirebaseAdminAppFactory.get_app")
+    def test_unverified_firebase_identity_cannot_access_product_catalog(self, get_app, verify_token):
+        get_app.return_value = object()
+        verify_token.return_value = {
+            "uid": "product-api-user",
+            "auth_time": 1_798_000_000,
+            "email_verified": False,
+        }
+
+        response = self.client.get(
+            "/api/v1/products/",
+            HTTP_AUTHORIZATION="Bearer valid-token",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data["detail"].code, "email_verification_required")
