@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { fetchCurrentAccount, fetchSecurityEvents, fetchIdentitySessions, revokeIdentitySession, type NexoraAccount, type NexoraSecurityEvent, type NexoraIdentitySession } from "../src/lib/api";
 import { useAuth } from "../src/providers/AuthProvider";
+import type { AuthMfaFactor } from "../src/lib/auth-types";
 
 export default function AccountScreen() {
-  const { user, status, signOut, sendVerificationEmail } = useAuth();
+  const { user, status, signOut, sendVerificationEmail, getMfaFactors, beginTotpEnrollment, completeTotpEnrollment, removeMfaFactor } = useAuth();
   const [emailVerified, setEmailVerified] = useState(user?.emailVerified ?? false);
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
@@ -23,6 +24,13 @@ export default function AccountScreen() {
   const [sessionsError, setSessionsError] = useState("");
   const [sessionBusyId, setSessionBusyId] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState("");
+  const [mfaFactors, setMfaFactors] = useState<AuthMfaFactor[]>([]);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaError, setMfaError] = useState("");
+  const [mfaNotice, setMfaNotice] = useState("");
+  const [totpDraft, setTotpDraft] = useState<{ secretKey: string; otpauthUrl: string } | null>(null);
+  const [totpCode, setTotpCode] = useState("");
 
   useEffect(() => {
     if (user) setEmailVerified(user.emailVerified);
@@ -76,6 +84,27 @@ export default function AccountScreen() {
     return () => { active = false; };
   }, [user, refreshKey]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadFactors() {
+      if (!user) {
+        setMfaLoading(false);
+        return;
+      }
+      setMfaLoading(true);
+      try {
+        const factors = await getMfaFactors();
+        if (active) setMfaFactors(factors);
+      } catch {
+        if (active) setMfaError("Daftar faktor MFA belum dapat dimuat pada platform ini.");
+      } finally {
+        if (active) setMfaLoading(false);
+      }
+    }
+    void loadFactors();
+    return () => { active = false; };
+  }, [user, refreshKey]);
+
   async function handleVerification() {
     if (!user) return;
     setVerificationBusy(true);
@@ -116,6 +145,77 @@ export default function AccountScreen() {
     } finally {
       setSessionBusyId(null);
     }
+  }
+
+  async function handleBeginTotp() {
+    setMfaBusy(true);
+    setMfaError("");
+    setMfaNotice("");
+    try {
+      const draft = await beginTotpEnrollment();
+      setTotpDraft(draft);
+      setTotpCode("");
+      setMfaNotice("Simpan secret ini di aplikasi authenticator. Secret hanya ditampilkan selama proses setup.");
+    } catch (requestError) {
+      const code = (requestError as { message?: string })?.message;
+      setMfaError(code === "VERIFIED_EMAIL_REQUIRED"
+        ? "Verifikasi email terlebih dahulu sebelum mengaktifkan MFA."
+        : "Setup authenticator belum berhasil. Periksa konfigurasi Firebase Identity Platform dan coba lagi.");
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function handleCompleteTotp() {
+    setMfaBusy(true);
+    setMfaError("");
+    setMfaNotice("");
+    try {
+      await completeTotpEnrollment(totpCode, "Nexora authenticator");
+      setTotpDraft(null);
+      setTotpCode("");
+      const factors = await getMfaFactors();
+      setMfaFactors(factors);
+      await user?.getIdToken(true);
+      setMfaNotice("Authenticator berhasil didaftarkan. MFA akan diverifikasi pada sesi login berikutnya setelah Anda masuk ulang.");
+    } catch (requestError) {
+      const code = (requestError as { message?: string })?.message;
+      setMfaError(code === "INVALID_TOTP_CODE"
+        ? "Masukkan kode 6 digit dari aplikasi authenticator."
+        : code === "TOTP_ENROLLMENT_EXPIRED"
+          ? "Sesi setup kedaluwarsa. Mulai setup kembali."
+          : "Kode tidak valid atau pendaftaran MFA gagal. Periksa waktu perangkat authenticator dan coba lagi.");
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  function handleRemoveTotp(factor: AuthMfaFactor) {
+    Alert.alert(
+      "Hapus faktor MFA?",
+      "Perangkat authenticator ini tidak lagi dapat digunakan untuk verifikasi dua langkah.",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: () => { void (async () => {
+            setMfaBusy(true);
+            setMfaError("");
+            setMfaNotice("");
+            try {
+              await removeMfaFactor(factor.uid);
+              setMfaFactors(await getMfaFactors());
+              setMfaNotice("Faktor authenticator telah dihapus.");
+            } catch {
+              setMfaError("Faktor MFA belum berhasil dihapus. Coba kembali.");
+            } finally {
+              setMfaBusy(false);
+            }
+          })(); },
+        },
+      ],
+    );
   }
 
   async function handleSignOut() {
@@ -194,6 +294,65 @@ export default function AccountScreen() {
           <InfoRow label="Email verification" value={(account?.email_verified ?? emailVerified) ? "Verified" : "Not verified"} />
           <InfoRow label="Multi-factor authentication" value={mfaStatus} />
           <Text style={styles.sessionIntro}>Status MFA berasal dari klaim token Firebase yang diverifikasi server, bukan dari nilai yang dikirim aplikasi.</Text>
+          {mfaLoading ? (
+            <ActivityIndicator color="#294C75" style={styles.loader} />
+          ) : (
+            <>
+              <Text style={styles.sessionIntro}>
+                Faktor authenticator terdaftar: {mfaFactors.length}. Pendaftaran memerlukan email terverifikasi dan Firebase Identity Platform dengan TOTP diaktifkan.
+              </Text>
+              {mfaFactors.map((factor) => (
+                <View key={factor.uid} style={styles.mfaFactorRow}>
+                  <View style={styles.sessionCopy}>
+                    <Text style={styles.eventTitle}>{factor.displayName || "Authenticator app"}</Text>
+                    <Text style={styles.eventMeta}>TOTP · {factor.enrollmentTime ? new Date(factor.enrollmentTime).toLocaleString() : "Enrolled"}</Text>
+                  </View>
+                  <Pressable disabled={mfaBusy} onPress={() => handleRemoveTotp(factor)} style={styles.revokeButton}>
+                    <Text style={styles.revokeText}>Remove</Text>
+                  </Pressable>
+                </View>
+              ))}
+              {!totpDraft ? (
+                <Pressable
+                  disabled={mfaBusy || !account?.email_verified}
+                  onPress={handleBeginTotp}
+                  style={[styles.verifyButton, (!account?.email_verified || mfaBusy) && styles.disabledButton]}
+                >
+                  {mfaBusy
+                    ? <ActivityIndicator color="#FFFFFF" />
+                    : <Text style={styles.verifyText}>Set up authenticator (TOTP)</Text>}
+                </Pressable>
+              ) : (
+                <View style={styles.totpSetup}>
+                  <Text style={styles.totpTitle}>1. Add this key to your authenticator</Text>
+                  <Text selectable style={styles.totpSecret}>{totpDraft.secretKey}</Text>
+                  <Text style={styles.sessionIntro}>
+                    Add an account manually in Google Authenticator, Microsoft Authenticator, or another TOTP app. Use account {user.email ?? user.uid} and issuer Nexora. Keep this key private.
+                  </Text>
+                  <Text style={styles.totpTitle}>2. Enter the 6-digit code</Text>
+                  <TextInput
+                    value={totpCode}
+                    onChangeText={(value) => setTotpCode(value.replace(/\D/g, "").slice(0, 6))}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    placeholder="000000"
+                    placeholderTextColor="#9AA6B5"
+                    style={styles.totpInput}
+                    editable={!mfaBusy}
+                    accessibilityLabel="Six digit authenticator code"
+                  />
+                  <Pressable disabled={mfaBusy || totpCode.length !== 6} onPress={handleCompleteTotp} style={[styles.verifyButton, (mfaBusy || totpCode.length !== 6) && styles.disabledButton]}>
+                    {mfaBusy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.verifyText}>Verify and enable MFA</Text>}
+                  </Pressable>
+                  <Pressable disabled={mfaBusy} onPress={() => { setTotpDraft(null); setTotpCode(""); }} style={styles.cancelTotp}>
+                    <Text style={styles.inlineText}>Cancel setup</Text>
+                  </Pressable>
+                </View>
+              )}
+            </>
+          )}
+          {!!mfaError && <Text accessibilityRole="alert" style={styles.error}>{mfaError}</Text>}
+          {!!mfaNotice && <Text accessibilityLiveRegion="polite" style={styles.verificationNotice}>{mfaNotice}</Text>}
           <Pressable disabled={verificationBusy} onPress={handleVerification} style={styles.verifyButton}>
             {verificationBusy
               ? <ActivityIndicator color="#FFFFFF" />
@@ -328,6 +487,13 @@ const styles = StyleSheet.create({
   retryText: { color: "#294C75", fontSize: 11, fontWeight: "800" },
   verifyButton: { minHeight: 42, borderRadius: 11, backgroundColor: "#294C75", alignItems: "center", justifyContent: "center", marginTop: 8, paddingHorizontal: 12 },
   verifyText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+  disabledButton: { opacity: 0.45 },
+  mfaFactorRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 10 },
+  totpSetup: { backgroundColor: "#F6F8FB", borderRadius: 12, padding: 12, marginTop: 10 },
+  totpTitle: { color: "#263E5E", fontSize: 10, fontWeight: "900", marginTop: 8, marginBottom: 7 },
+  totpSecret: { color: "#172C4B", backgroundColor: "#E8EEF6", padding: 12, borderRadius: 9, fontSize: 15, fontWeight: "900", letterSpacing: 1.1 },
+  totpInput: { minHeight: 46, borderWidth: 1, borderColor: "#DCE4EE", backgroundColor: "#FFFFFF", borderRadius: 10, paddingHorizontal: 12, color: "#172C4B", fontSize: 18, fontWeight: "800", letterSpacing: 5, textAlign: "center" },
+  cancelTotp: { alignSelf: "center", padding: 10 },
   verificationNotice: { color: "#42638B", fontSize: 10, lineHeight: 15, marginTop: 8 },
   sessionIntro: { color: "#8794A6", fontSize: 9, lineHeight: 14, marginBottom: 8 },
   sessionRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#EEF1F5", paddingVertical: 12 },
