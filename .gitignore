@@ -31,3 +31,7 @@ pnpm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Firebase native client configuration (download per registered app)
+apps/mobile/google-services.json
+apps/mobile/GoogleService-Info.plist
