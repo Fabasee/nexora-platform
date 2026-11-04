@@ -9,7 +9,7 @@ import {
   type User,
 } from "firebase/auth";
 
-import { getFirebaseAuth } from "./firebase";
+import { getFirebaseAuth, isFirebaseConfigured } from "./firebase";
 import type { AuthAdapter, AuthUser } from "./auth-types";
 
 function toAuthUser(user: User): AuthUser {
@@ -24,6 +24,7 @@ function toAuthUser(user: User): AuthUser {
 }
 
 export const firebaseJsAuthAdapter: AuthAdapter = {
+  isConfigured: isFirebaseConfigured,
   subscribe(onUser, onError) {
     return onAuthStateChanged(
       getFirebaseAuth(),
