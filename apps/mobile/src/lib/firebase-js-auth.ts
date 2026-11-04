@@ -23,6 +23,10 @@ function toAuthUser(user: User): AuthUser {
   };
 }
 
+function nativeMfaRequired(): never {
+  throw new Error("TOTP management is currently available in the native Android/iOS app only.");
+}
+
 export const firebaseJsAuthAdapter: AuthAdapter = {
   isConfigured: isFirebaseConfigured,
   subscribe(onUser, onError) {
@@ -57,11 +61,10 @@ export const firebaseJsAuthAdapter: AuthAdapter = {
       throw error;
     }
 
-    // Registration remains successful if the email provider is temporarily unavailable.
     try {
       await sendEmailVerification(credential.user);
     } catch {
-      // The account screen exposes a retry action.
+      // Registration remains successful; the account screen can retry verification.
     }
 
     return toAuthUser(credential.user);
@@ -76,6 +79,11 @@ export const firebaseJsAuthAdapter: AuthAdapter = {
     if (!user) throw new Error("No authenticated user is available.");
     await sendEmailVerification(user);
   },
+
+  async getMfaFactors() { return nativeMfaRequired(); },
+  async beginTotpEnrollment() { return nativeMfaRequired(); },
+  async completeTotpEnrollment() { return nativeMfaRequired(); },
+  async removeMfaFactor() { return nativeMfaRequired(); },
 
   async signOut() {
     await signOut(getFirebaseAuth());
