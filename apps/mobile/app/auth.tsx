@@ -14,8 +14,9 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../src/providers/AuthProvider";
+import { MfaChallengeRequiredError, type AuthMfaFactor } from "../src/lib/auth-types";
 
-type Mode = "signin" | "register" | "reset";
+type Mode = "signin" | "register" | "reset" | "mfa";
 
 function friendlyAuthError(error: unknown): string {
   const code = (error as { code?: string })?.code;
@@ -31,7 +32,7 @@ function friendlyAuthError(error: unknown): string {
 }
 
 export default function AuthScreen() {
-  const { signIn, register, resetPassword, status } = useAuth();
+  const { signIn, register, resetPassword, completeTotpSignIn, status } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,8 +40,11 @@ export default function AuthScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [mfaFactors, setMfaFactors] = useState<AuthMfaFactor[]>([]);
+  const [selectedMfaFactorUid, setSelectedMfaFactorUid] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
 
-  const title = mode === "register" ? "Create your account" : mode === "reset" ? "Reset password" : "Welcome back";
+  const title = mode === "register" ? "Create your account" : mode === "reset" ? "Reset password" : mode === "mfa" ? "Two-step verification" : "Welcome back";
   const subtitle = mode === "register"
     ? "One Nexora account for connected experiences."
     : mode === "reset"
@@ -54,7 +58,7 @@ export default function AuthScreen() {
       setError("Masukkan alamat email.");
       return;
     }
-    if (mode !== "reset" && !password) {
+    if (mode === "mfa" && (mfaCode.length !== 6 || !selectedMfaFactorUid)) {\n      setError("Masukkan kode authenticator 6 digit.");\n      return;\n    }\n    if (mode !== "reset" && mode !== "mfa" && !password) {
       setError("Masukkan kata sandi.");
       return;
     }
@@ -121,7 +125,7 @@ export default function AuthScreen() {
           <Text style={styles.subtitle}>{subtitle}</Text>
 
           <View style={styles.form}>
-            {mode === "register" && (
+            {mode === "mfa" && (\n              <View>\n                <Text style={styles.label}>AUTHENTICATOR</Text>\n                <Text style={styles.mfaHint}>{mfaFactors.find((factor) => factor.uid === selectedMfaFactorUid)?.displayName || "Nexora authenticator"}</Text>\n                <Text style={styles.label}>6-DIGIT CODE</Text>\n                <TextInput value={mfaCode} onChangeText={(value) => setMfaCode(value.replace(/\\D/g, "").slice(0, 6))} placeholder="000000" placeholderTextColor="#9AA6B5" keyboardType="number-pad" maxLength={6} style={styles.input} editable={!busy} />\n              </View>\n            )}\n            {mode !== "mfa" && mode === "register" && (
               <>
                 <Text style={styles.label}>FULL NAME</Text>
                 <TextInput
@@ -136,7 +140,7 @@ export default function AuthScreen() {
                 />
               </>
             )}
-            <Text style={styles.label}>EMAIL ADDRESS</Text>
+            {mode !== "mfa" && <Text style={styles.label}>EMAIL ADDRESS</Text>}
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -177,7 +181,7 @@ export default function AuthScreen() {
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, busy && styles.disabled]}
             >
               {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>
-                {mode === "register" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in"}
+                {mode === "register" ? "Create account" : mode === "reset" ? "Send reset link" : mode === "mfa" ? "Verify code" : "Sign in"}
               </Text>}
             </Pressable>
 
@@ -188,7 +192,7 @@ export default function AuthScreen() {
             )}
           </View>
 
-          <View style={styles.switchRow}>
+          {mode !== "mfa" && <View style={styles.switchRow}>
             <Text style={styles.switchHint}>{mode === "register" ? "Already have an account?" : "New to Nexora?"}</Text>
             <Pressable onPress={() => changeMode(mode === "register" ? "signin" : "register")}>
               <Text style={styles.switchAction}>{mode === "register" ? "Sign in" : "Create account"}</Text>
@@ -228,6 +232,7 @@ const styles = StyleSheet.create({
   notice: { color: "#16704A", fontSize: 12, lineHeight: 18, marginTop: 13 },
   inlineAction: { alignSelf: "center", padding: 12 },
   inlineText: { color: "#42638B", fontSize: 12, fontWeight: "700" },
+  mfaHint: { color: "#294C75", fontSize: 12, fontWeight: "800", paddingVertical: 8 },
   switchRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 25 },
   switchHint: { color: "#8290A2", fontSize: 11 },
   switchAction: { color: "#294C75", fontSize: 11, fontWeight: "900" },
