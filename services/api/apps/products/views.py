@@ -1,9 +1,11 @@
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.identity.permissions import VerifiedEmailRequired
-from .services import ProductAccessService
+from .models import ProductPlan, ProductSubscription
+from .services import ProductAccessService, ProductActivationError, ProductActivationService
 
 
 class AccessibleProductsView(APIView):
@@ -20,4 +22,70 @@ class AccessibleProductsView(APIView):
                 }
                 for product in products
             ],
+        })
+
+
+class ProductActivationView(APIView):
+    permission_classes = [IsAuthenticated, VerifiedEmailRequired]
+
+    def post(self, request, product_key):
+        try:
+            membership, subscription = ProductActivationService.activate_free(
+                request.user,
+                product_key,
+            )
+        except ProductActivationError as exc:
+            return Response(
+                {"detail": str(exc), "code": "product_activation_denied"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(
+            {
+                "product": product_key,
+                "membership": membership.status,
+                "subscription": {
+                    "id": str(subscription.pk),
+                    "status": subscription.status,
+                    "plan": subscription.plan.key,
+                    "plan_name": subscription.plan.name,
+                    "tier": subscription.plan.tier,
+                    "currency": subscription.plan.currency,
+                    "price_minor": subscription.plan.price_minor,
+                    "auto_renew": subscription.auto_renew,
+                },
+                "created": {
+                    "membership": membership.created,
+                    "subscription": subscription.created,
+                },
+            },
+            status=status.HTTP_201_CREATED if subscription.created else status.HTTP_200_OK,
+        )
+
+
+class ProductSubscriptionView(APIView):
+    permission_classes = [IsAuthenticated, VerifiedEmailRequired]
+
+    def get(self, request, product_key):
+        subscription = ProductSubscription.objects.select_related("product", "plan").filter(
+            user=request.user,
+            product__key=product_key,
+        ).first()
+        if subscription is None:
+            return Response(
+                {"detail": "This product has not been activated.", "code": "product_not_activated"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response({
+            "product": subscription.product.key,
+            "status": subscription.status,
+            "plan": subscription.plan.key,
+            "plan_name": subscription.plan.name,
+            "tier": subscription.plan.tier,
+            "currency": subscription.plan.currency,
+            "price_minor": subscription.plan.price_minor,
+            "started_at": subscription.started_at,
+            "current_period_start": subscription.current_period_start,
+            "current_period_end": subscription.current_period_end,
+            "auto_renew": subscription.auto_renew,
         })
