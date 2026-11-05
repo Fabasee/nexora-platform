@@ -124,7 +124,7 @@ class OfficePortfolioAuditApiTests(TestCase):
         self.assertEqual(anonymous.status_code, 401)
 
         self.client.force_authenticate(user=self.regular)
-        with patch("apps.identity.office_access.OfficeAccessPermission.has_permission", return_value=True):
+        with patch("apps.identity.office_access.OfficeAccessPermission.has_permission", return_value=False):
             denied = self.client.get("/api/v1/office/audit/")
         self.assertEqual(denied.status_code, 403)
 
