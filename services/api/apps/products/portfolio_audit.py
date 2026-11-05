@@ -4,6 +4,7 @@ from .models import PortfolioAuditEvent, ProductPortfolioEntry
 
 
 AUDITED_FIELDS = (
+    "key",
     "name",
     "entry_type",
     "category",
