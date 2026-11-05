@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.identity.permissions import VerifiedEmailRequired
-from .models import ProductPlan, ProductSubscription
+from .models import ProductSubscription
 from .services import ProductAccessService, ProductActivationError, ProductActivationService
 
 
@@ -15,11 +15,7 @@ class AccessibleProductsView(APIView):
         products = ProductAccessService.list_accessible_products(request.user)
         return Response({
             "results": [
-                {
-                    "key": product.key,
-                    "name": product.name,
-                    "description": product.description,
-                }
+                {"key": product.key, "name": product.name, "description": product.description}
                 for product in products
             ],
         })
@@ -30,36 +26,35 @@ class ProductActivationView(APIView):
 
     def post(self, request, product_key):
         try:
-            membership, subscription = ProductActivationService.activate_free(
-                request.user,
-                product_key,
+            membership, subscription, membership_created, subscription_created = (
+                ProductActivationService.activate_free(request.user, product_key)
             )
         except ProductActivationError as exc:
             return Response(
                 {"detail": str(exc), "code": "product_activation_denied"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-
-        return Response(
-            {
-                "product": product_key,
-                "membership": membership.status,
-                "subscription": {
-                    "id": str(subscription.pk),
-                    "status": subscription.status,
-                    "plan": subscription.plan.key,
-                    "plan_name": subscription.plan.name,
-                    "tier": subscription.plan.tier,
-                    "currency": subscription.plan.currency,
-                    "price_minor": subscription.plan.price_minor,
-                    "auto_renew": subscription.auto_renew,
-                },
-                "created": {
-                    "membership": membership.created,
-                    "subscription": subscription.created,
-                },
+        payload = {
+            "product": product_key,
+            "membership": membership.status,
+            "subscription": {
+                "id": str(subscription.pk),
+                "status": subscription.status,
+                "plan": subscription.plan.key,
+                "plan_name": subscription.plan.name,
+                "tier": subscription.plan.tier,
+                "currency": subscription.plan.currency,
+                "price_minor": subscription.plan.price_minor,
+                "auto_renew": subscription.auto_renew,
             },
-            status=status.HTTP_201_CREATED if subscription.created else status.HTTP_200_OK,
+            "created": {
+                "membership": membership_created,
+                "subscription": subscription_created,
+            },
+        }
+        return Response(
+            payload,
+            status=status.HTTP_201_CREATED if subscription_created else status.HTTP_200_OK,
         )
 
 
@@ -68,8 +63,7 @@ class ProductSubscriptionView(APIView):
 
     def get(self, request, product_key):
         subscription = ProductSubscription.objects.select_related("product", "plan").filter(
-            user=request.user,
-            product__key=product_key,
+            user=request.user, product__key=product_key
         ).first()
         if subscription is None:
             return Response(
