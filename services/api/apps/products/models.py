@@ -244,6 +244,8 @@ class ProductPortfolioEntry(models.Model):
             raise ValidationError({"parent": "A portfolio entry cannot be its own parent."})
         if self.entry_type == self.EntryType.MODULE and not self.parent_id:
             raise ValidationError({"parent": "A module must belong to a parent application."})
+        if self.parent_id and self.parent.entry_type != self.EntryType.APPLICATION:
+            raise ValidationError({"parent": "Modules must belong directly to a parent application."})
         if self.entry_type != self.EntryType.MODULE and self.parent_id:
             raise ValidationError({"parent": "Only modules can have a parent portfolio entry."})
 
