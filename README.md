@@ -46,7 +46,9 @@ docs/development/        Local setup and contribution workflow
 - Django API with a custom UUID-based Nexora user model.
 - Firebase ID-token verification with revocation checks.
 - Provider-neutral identity resolution with a unique provider-subject constraint.
-- Product registry, product membership, and time-bounded feature entitlements.
+- Product registry, product membership, time-bounded feature entitlements, product plans, and subscriptions.
+- First-use product activation that idempotently provisions a product's Free plan without enrolling users in every product.
+- Authenticated subscription status API scoped to the current Nexora identity.
 - Scoped entitlement checks that fail closed when scope does not match.
 - Authenticated current-account endpoint at `GET /api/v1/account/me/`.
 - Account-scoped security-event history at `GET /api/v1/account/security-events/`.
@@ -54,6 +56,7 @@ docs/development/        Local setup and contribution workflow
 - Server-verified email status and verified-email enforcement for the product catalog.
 - Scoped rate limit for session revocation operations.
 - Authenticated product catalog endpoint at `GET /api/v1/products/`.
+- Product activation endpoint at `POST /api/v1/products/{product_key}/activate/` and current subscription endpoint at `GET /api/v1/products/{product_key}/subscription/`.
 - Django migrations, focused identity/access tests, and GitHub Actions checks.
 
 ## Local checks
