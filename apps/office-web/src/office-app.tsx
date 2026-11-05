@@ -88,7 +88,7 @@ const label = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (ch
 function describeDevice(userAgent: string) {
   if (!userAgent) return "Unknown device";
   const os = /Android/i.test(userAgent) ? "Android" : /iPhone|iPad|iPod/i.test(userAgent) ? "iOS" : /Windows/i.test(userAgent) ? "Windows" : /Mac OS|Macintosh/i.test(userAgent) ? "macOS" : /Linux/i.test(userAgent) ? "Linux" : "Unknown OS";
-  const browser = /Edg\//i.test(userAgent) ? "Edge" : /Firefox\//i.test(userAgent) ? "Firefox" : /Chrome\//i.test(userAgent) ? "Chrome" : /Safari\//i.test(userAgent) ? "Safari" : /SamsungBrowser/i.test(userAgent) ? "Samsung Internet" : "Unknown browser";
+  const browser = /Edg\//i.test(userAgent) ? "Edge" : /SamsungBrowser/i.test(userAgent) ? "Samsung Internet" : /Firefox\//i.test(userAgent) ? "Firefox" : /Chrome\//i.test(userAgent) ? "Chrome" : /Safari\//i.test(userAgent) ? "Safari" : "Unknown browser";
   return `${browser} · ${os}`;
 }
 
