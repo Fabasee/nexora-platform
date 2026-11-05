@@ -125,18 +125,23 @@ export function OfficeApp() {
       if (type) params.set("entry_type", type);
       if (lifecycle) params.set("lifecycle_status", lifecycle);
       if (decision) params.set("decision_status", decision);
-      const [profile, nextSummary, page, audit] = await Promise.all([
-        apiRequest<AccessProfile>(activeUser, "access/me/"),
+      const profile = await apiRequest<AccessProfile>(activeUser, "access/me/");
+      const [nextSummary, page] = await Promise.all([
         apiRequest<Summary>(activeUser, "summary/"),
         apiRequest<PortfolioPage>(activeUser, `portfolio/?${params.toString()}`),
-        apiRequest<AuditPage>(activeUser, "audit/?limit=20&offset=0"),
       ]);
       setAccessProfile(profile);
       setSummary(nextSummary);
       setEntries(page.results);
       setTotal(page.count);
-      setAuditEvents(audit.results);
-      setAuditTotal(audit.count);
+      if (profile.permissions.includes("audit.view")) {
+        const audit = await apiRequest<AuditPage>(activeUser, "audit/?limit=20&offset=0");
+        setAuditEvents(audit.results);
+        setAuditTotal(audit.count);
+      } else {
+        setAuditEvents([]);
+        setAuditTotal(0);
+      }
       if (profile.permissions.includes("security.view")) {
         const security = await apiRequest<SecurityEventPage>(activeUser, "access/security-events/?limit=20&offset=0");
         setSecurityEvents(security.results);
@@ -262,7 +267,7 @@ export function OfficeApp() {
             </tbody></table></div>
           </div>)}
         </section>
-        <section className="panel audit-panel">
+        {accessProfile?.permissions.includes("audit.view") && <section className="panel audit-panel">
           <div className="panel-heading"><div><h2>Audit &amp; governance</h2><p>{auditTotal} aktivitas tercatat · Menampilkan 20 aktivitas terbaru</p></div><span className="readonly-tag">APPEND ONLY</span></div>
           {auditEvents.length === 0 ? <div className="empty-state">Belum ada aktivitas perubahan portofolio.</div> : <div className="table-wrap"><table><thead><tr><th>TIME</th><th>ENTRY</th><th>EVENT</th><th>SOURCE</th><th>ACTOR</th><th>CHANGES</th></tr></thead><tbody>
             {auditEvents.map((event) => <tr key={event.id}>
@@ -284,7 +289,7 @@ export function OfficeApp() {
               </details></td>
             </tr>)}
           </tbody></table></div>}
-        </section>
+        </section>}
         {accessProfile?.permissions.includes("security.view") && <section className="panel audit-panel">
           <div className="panel-heading"><div><h2>Security activity</h2><p>{securityEventTotal} event tercatat · Menampilkan 20 event terbaru</p></div><span className="readonly-tag">SECURITY</span></div>
           {securityEvents.length === 0 ? <div className="empty-state">Belum ada aktivitas keamanan.</div> : <div className="table-wrap"><table><thead><tr><th>TIME</th><th>ACCOUNT</th><th>EVENT</th><th>PROVIDER</th><th>IP ADDRESS</th><th>REQUEST ID</th></tr></thead><tbody>
