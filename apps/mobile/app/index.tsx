@@ -76,10 +76,18 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/catalog")}
+          style={{ marginTop: 18, backgroundColor: "#24466D", borderRadius: 13, paddingVertical: 14, alignItems: "center" }}
+        >
+          <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>Open live product catalog →</Text>
+        </Pressable>
+
         <View style={styles.sectionHeading}>
           <View>
             <Text style={styles.sectionEyebrow}>THE ECOSYSTEM</Text>
-            <Text style={styles.sectionTitle}>Explore Nexora</Text>
+            <Text style={styles.sectionTitle}>Product previews</Text>
           </View>
           <Text style={styles.count}>04 PRODUCTS</Text>
         </View>
