@@ -47,6 +47,28 @@ class PortfolioAuditServiceTests(TestCase):
         self.assertEqual(latest.changes["name"]["before"], "Audit Test App")
         self.assertEqual(latest.changes["name"]["after"], "Renamed Audit Test App")
 
+    def test_portfolio_key_rename_is_audited_and_updates_event_snapshot(self):
+        entry, _ = save_portfolio_entry(
+            entry=self.entry,
+            source=PortfolioAuditEvent.Source.ADMIN,
+            actor=self.actor,
+        )
+        entry.key = "renamed-audit-test-app"
+        entry, changed = save_portfolio_entry(
+            entry=entry,
+            source=PortfolioAuditEvent.Source.ADMIN,
+            actor=self.actor,
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual(entry.key, "renamed-audit-test-app")
+        event = PortfolioAuditEvent.objects.latest("occurred_at")
+        self.assertEqual(event.entry_key, "renamed-audit-test-app")
+        self.assertEqual(
+            event.changes["key"],
+            {"before": "audit-test-app", "after": "renamed-audit-test-app"},
+        )
+
     def test_noop_save_does_not_create_noise(self):
         entry, _ = save_portfolio_entry(
             entry=self.entry,
