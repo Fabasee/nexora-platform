@@ -40,6 +40,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="productportfolioentry",
-            index=models.Index(fields=["decision_status", "priority"], name="portfolio_decision_priority_idx"),
+            index=models.Index(fields=["decision_status", "priority"], name="portfolio_decision_idx"),
         ),
     ]
