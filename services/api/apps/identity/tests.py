@@ -225,10 +225,10 @@ class IdentitySessionApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.session.refresh_from_db()
         self.assertIsNotNone(self.session.revoked_at)
-        self.assertTrue(SecurityEvent.objects.filter(
-            user=self.user,
-            event_type=SecurityEvent.EventType.SESSION_REVOKED,
-        ).exists())
+        event = SecurityEvent.objects.get(
+            user=self.user, event_type=SecurityEvent.EventType.SESSION_REVOKED,
+        )
+        self.assertEqual(event.actor_id, self.user.pk)
 
     def test_user_cannot_revoke_another_accounts_session(self):
         other_provider = IdentityProviderAccount.objects.create(
