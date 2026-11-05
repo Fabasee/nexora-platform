@@ -5,7 +5,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.products.models import Product, ProductPortfolioEntry
+from apps.products.models import PortfolioAuditEvent, Product, ProductPortfolioEntry
+from apps.products.portfolio_audit import save_portfolio_entry
 
 
 class Command(BaseCommand):
@@ -82,13 +83,19 @@ class Command(BaseCommand):
                 "activation_product": activation_product,
                 "sort_order": item.get("sort_order", 100),
             }
-            entry, was_created = ProductPortfolioEntry.objects.update_or_create(
-                key=key, defaults=defaults
+            entry = ProductPortfolioEntry.objects.filter(key=key).first()
+            was_created = entry is None
+            if entry is None:
+                entry = ProductPortfolioEntry(key=key)
+            for field, value in defaults.items():
+                setattr(entry, field, value)
+            entry, changed = save_portfolio_entry(
+                entry=entry,
+                source=PortfolioAuditEvent.Source.MANIFEST,
             )
-            entry.full_clean()
             if was_created:
                 created += 1
-            else:
+            elif changed:
                 updated += 1
 
         if options["dry_run"]:
