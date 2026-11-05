@@ -40,7 +40,7 @@ type PortfolioPage = { count: number; limit: number; offset: number; results: Po
 type AuditEvent = { id: string; entry_key: string; entry_name: string; action: "created" | "updated"; source: "admin" | "manifest"; actor_label: string; changes: Record<string, { before: string | null; after: string | null }>; occurred_at: string };
 type AuditPage = { count: number; limit: number; offset: number; results: AuditEvent[] };
 type AccessProfile = { user_id: string; roles: string[]; permissions: string[] };
-type SecurityEvent = { id: string; user_id: string; event_type: string; occurred_at: string; provider: string; source_ip: string | null; user_agent: string; request_id: string };
+type SecurityEvent = { id: string; user_id: string; actor_id: string | null; event_type: string; occurred_at: string; provider: string; source_ip: string | null; user_agent: string; request_id: string };
 type SecurityEventPage = { count: number; limit: number; offset: number; results: SecurityEvent[] };
 type OfficeSession = { id: string; user_id: string; provider: string; authenticated_at: string; last_seen_at: string; revoked_at: string | null; is_active: boolean; mfa_verified: boolean; second_factor_type: string; source_ip: string | null; user_agent: string };
 type OfficeSessionPage = { count: number; limit: number; offset: number; results: OfficeSession[] };
@@ -327,10 +327,11 @@ export function OfficeApp() {
         </section>}
         {accessProfile?.permissions.includes("security.view") && <section className="panel audit-panel">
           <div className="panel-heading"><div><h2>Security activity</h2><p>{securityEventTotal} event tercatat · Menampilkan 20 event terbaru</p></div><span className="readonly-tag">SECURITY</span></div>
-          {securityEvents.length === 0 ? <div className="empty-state">Belum ada aktivitas keamanan.</div> : <div className="table-wrap"><table><thead><tr><th>TIME</th><th>ACCOUNT</th><th>EVENT</th><th>PROVIDER</th><th>IP ADDRESS</th><th>REQUEST ID</th></tr></thead><tbody>
+          {securityEvents.length === 0 ? <div className="empty-state">Belum ada aktivitas keamanan.</div> : <div className="table-wrap"><table><thead><tr><th>TIME</th><th>ACCOUNT</th><th>ACTOR</th><th>EVENT</th><th>PROVIDER</th><th>IP ADDRESS</th><th>REQUEST ID</th></tr></thead><tbody>
             {securityEvents.map((event) => <tr key={event.id}>
               <td>{new Date(event.occurred_at).toLocaleString()}</td>
               <td><span className="entry-key">{event.user_id}</span></td>
+              <td><span className="entry-key">{event.actor_id ?? "System"}</span></td>
               <td><Status value={event.event_type} /></td>
               <td>{event.provider || "—"}</td>
               <td>{event.source_ip || "—"}</td>
@@ -343,7 +344,7 @@ export function OfficeApp() {
           {officeSessions.length === 0 ? <div className="empty-state">Tidak ada sesi aktif.</div> : <div className="table-wrap"><table><thead><tr><th>ACCOUNT</th><th>DEVICE / BROWSER</th><th>LAST SEEN</th><th>IP ADDRESS</th><th>MFA</th><th>ACTION</th></tr></thead><tbody>
             {officeSessions.map((session) => <tr key={session.id}>
               <td><span className="entry-key">{session.user_id}</span></td>
-              <td><div className="entry-name">{session.user_agent || "Unknown device"}</div><div className="entry-key">{session.provider} · {session.id.slice(0, 8)}</div></td>
+              <td><div className="entry-name" title={session.user_agent}>{session.user_agent || "Unknown device"}</div><div className="entry-key">{session.provider} · {session.id.slice(0, 8)}</div></td>
               <td>{new Date(session.last_seen_at).toLocaleString()}</td>
               <td>{session.source_ip || "—"}</td>
               <td>{session.mfa_verified ? label(session.second_factor_type || "verified") : "Not verified"}</td>
