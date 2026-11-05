@@ -129,7 +129,7 @@ class OfficePortfolioAuditApiTests(TestCase):
         self.assertEqual(denied.status_code, 403)
 
         self.client.force_authenticate(user=self.staff)
-        with patch("apps.identity.permissions.VerifiedEmailRequired.has_permission", return_value=True):
+        with patch("apps.identity.office_access.OfficeAccessPermission.has_permission", return_value=True):
             allowed = self.client.get("/api/v1/office/audit/")
         self.assertEqual(allowed.status_code, 200)
         self.assertEqual(allowed.data["count"], 1)
@@ -137,7 +137,7 @@ class OfficePortfolioAuditApiTests(TestCase):
 
     def test_audit_api_rejects_invalid_filters_and_bounds_page_size(self):
         self.client.force_authenticate(user=self.staff)
-        with patch("apps.identity.permissions.VerifiedEmailRequired.has_permission", return_value=True):
+        with patch("apps.identity.office_access.OfficeAccessPermission.has_permission", return_value=True):
             invalid = self.client.get("/api/v1/office/audit/?action=deleted")
             bounded = self.client.get("/api/v1/office/audit/?limit=1000")
         self.assertEqual(invalid.status_code, 400)
