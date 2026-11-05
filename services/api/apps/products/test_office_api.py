@@ -36,13 +36,13 @@ class OfficePortfolioApiTests(TestCase):
             delivery_model=ProductPortfolioEntry.DeliveryModel.MODULE,
         )
 
-    def _staff_get(self, path, **kwargs):
+    def _staff_get(self, path, params=None):
         self.client.force_authenticate(user=self.staff_user)
         with patch(
             "apps.identity.permissions.VerifiedEmailRequired.has_permission",
             return_value=True,
         ):
-            return self.client.get(path, **kwargs)
+            return self.client.get(path, params=params)
 
     def test_anonymous_user_cannot_access_office_portfolio(self):
         response = self.client.get("/api/v1/office/portfolio/")
