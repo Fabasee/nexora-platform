@@ -42,6 +42,8 @@ type AuditPage = { count: number; limit: number; offset: number; results: AuditE
 type AccessProfile = { user_id: string; roles: string[]; permissions: string[] };
 type SecurityEvent = { id: string; user_id: string; event_type: string; occurred_at: string; provider: string; source_ip: string | null; user_agent: string; request_id: string };
 type SecurityEventPage = { count: number; limit: number; offset: number; results: SecurityEvent[] };
+type OfficeSession = { id: string; user_id: string; provider: string; authenticated_at: string; last_seen_at: string; revoked_at: string | null; is_active: boolean; mfa_verified: boolean; second_factor_type: string; source_ip: string | null; user_agent: string };
+type OfficeSessionPage = { count: number; limit: number; offset: number; results: OfficeSession[] };
 type Summary = {
   total_entries: number;
   applications: number;
@@ -65,10 +67,11 @@ const firebaseApp = firebaseReady
   : null;
 const auth = firebaseApp ? getAuth(firebaseApp) : null;
 
-async function apiRequest<T>(user: User, path: string): Promise<T> {
+async function apiRequest<T>(user: User, path: string, method = "GET"): Promise<T> {
   if (!apiBase) throw new Error("VITE_API_BASE_URL belum dikonfigurasi.");
   const token = await user.getIdToken();
   const response = await fetch(`${apiBase}/office/${path}`, {
+    method,
     headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
   });
   if (!response.ok) {
@@ -96,6 +99,9 @@ export function OfficeApp() {
   const [accessProfile, setAccessProfile] = useState<AccessProfile | null>(null);
   const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
   const [securityEventTotal, setSecurityEventTotal] = useState(0);
+  const [officeSessions, setOfficeSessions] = useState<OfficeSession[]>([]);
+  const [officeSessionTotal, setOfficeSessionTotal] = useState(0);
+  const [sessionActionBusy, setSessionActionBusy] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [lifecycle, setLifecycle] = useState("");
@@ -156,6 +162,14 @@ export function OfficeApp() {
         setSecurityEvents([]);
         setSecurityEventTotal(0);
       }
+      if (profile.permissions.includes("sessions.manage")) {
+        const sessions = await apiRequest<OfficeSessionPage>(activeUser, "access/sessions/?active=true&limit=50&offset=0");
+        setOfficeSessions(sessions.results);
+        setOfficeSessionTotal(sessions.count);
+      } else {
+        setOfficeSessions([]);
+        setOfficeSessionTotal(0);
+      }
       setNotice(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Dashboard tidak dapat dimuat.");
@@ -167,6 +181,21 @@ export function OfficeApp() {
   useEffect(() => {
     if (user) void loadDashboard(user);
   }, [user, loadDashboard]);
+
+  async function revokeOfficeSession(sessionId: string) {
+    if (!user || !window.confirm("Cabut sesi ini? Perangkat tersebut harus masuk kembali.")) return;
+    setSessionActionBusy(sessionId);
+    setError(null);
+    try {
+      await apiRequest<{ status: string }>(user, `access/sessions/${sessionId}/revoke/`, "POST");
+      setNotice("Sesi berhasil dicabut.");
+      await loadDashboard(user);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Sesi gagal dicabut.");
+    } finally {
+      setSessionActionBusy(null);
+    }
+  }
 
   const openEntry = useCallback(async (entry: PortfolioEntry) => {
     if (!user) return;
@@ -306,6 +335,19 @@ export function OfficeApp() {
               <td>{event.provider || "—"}</td>
               <td>{event.source_ip || "—"}</td>
               <td><span className="entry-key">{event.request_id || "—"}</span></td>
+            </tr>)}
+          </tbody></table></div>}
+        </section>}
+        {accessProfile?.permissions.includes("sessions.manage") && <section className="panel audit-panel">
+          <div className="panel-heading"><div><h2>Session &amp; device management</h2><p>{officeSessionTotal} active sessions · Latest 50 sessions</p></div><span className="readonly-tag">SESSION CONTROL</span></div>
+          {officeSessions.length === 0 ? <div className="empty-state">Tidak ada sesi aktif.</div> : <div className="table-wrap"><table><thead><tr><th>ACCOUNT</th><th>DEVICE / BROWSER</th><th>LAST SEEN</th><th>IP ADDRESS</th><th>MFA</th><th>ACTION</th></tr></thead><tbody>
+            {officeSessions.map((session) => <tr key={session.id}>
+              <td><span className="entry-key">{session.user_id}</span></td>
+              <td><div className="entry-name">{session.user_agent || "Unknown device"}</div><div className="entry-key">{session.provider} · {session.id.slice(0, 8)}</div></td>
+              <td>{new Date(session.last_seen_at).toLocaleString()}</td>
+              <td>{session.source_ip || "—"}</td>
+              <td>{session.mfa_verified ? label(session.second_factor_type || "verified") : "Not verified"}</td>
+              <td><button className="button secondary" disabled={sessionActionBusy === session.id} onClick={() => void revokeOfficeSession(session.id)}>{sessionActionBusy === session.id ? "Revoking…" : "Revoke"}</button></td>
             </tr>)}
           </tbody></table></div>}
         </section>}
