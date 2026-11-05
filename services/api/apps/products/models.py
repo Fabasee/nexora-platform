@@ -251,3 +251,51 @@ class ProductPortfolioEntry(models.Model):
 
     def __str__(self):
         return f"{self.key} ({self.lifecycle_status})"
+
+
+class PortfolioAuditEvent(models.Model):
+    """Append-only application-level audit record for portfolio governance."""
+
+    class Action(models.TextChoices):
+        CREATED = "created", "Created"
+        UPDATED = "updated", "Updated"
+
+    class Source(models.TextChoices):
+        ADMIN = "admin", "Django Admin"
+        MANIFEST = "manifest", "Manifest synchronization"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    entry = models.ForeignKey(
+        ProductPortfolioEntry, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="audit_events",
+    )
+    entry_key = models.SlugField(max_length=80, db_index=True)
+    entry_name = models.CharField(max_length=120)
+    action = models.CharField(max_length=12, choices=Action.choices)
+    source = models.CharField(max_length=12, choices=Source.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="portfolio_audit_events",
+    )
+    actor_label = models.CharField(max_length=160, blank=True)
+    changes = models.JSONField(default=dict)
+    occurred_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "products_portfolio_audit_event"
+        ordering = ("-occurred_at", "-id")
+        indexes = [
+            models.Index(fields=("entry_key", "-occurred_at"), name="portfolio_audit_entry_idx"),
+            models.Index(fields=("source", "-occurred_at"), name="portfolio_audit_source_idx"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Portfolio audit events are append-only.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Portfolio audit events cannot be deleted through the application.")
+
+    def __str__(self):
+        return f"{self.entry_key}:{self.action}:{self.occurred_at.isoformat()}"
