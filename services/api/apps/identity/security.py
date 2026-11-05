@@ -10,18 +10,24 @@ def record_security_event(*, user, event_type, request, provider="", dedupe_key=
     if source_ip and len(source_ip) > 45:
         source_ip = None
 
-    return SecurityEvent.objects.get_or_create(
+    values = {
+        "user": user,
+        "actor": actor or user,
+        "event_type": event_type,
+        "provider": provider[:32],
+        "source_ip": source_ip,
+        "user_agent": meta.get("HTTP_USER_AGENT", "")[:512],
+        "request_id": meta.get("HTTP_X_REQUEST_ID", "")[:128],
+    }
+    # A NULL unique key is not a deduplication key. Using get_or_create with
+    # dedupe_key=None would cause unrelated events to collapse onto one row.
+    if dedupe_key is None:
+        return SecurityEvent.objects.create(**values)
+    event, _created = SecurityEvent.objects.get_or_create(
         dedupe_key=dedupe_key,
-        defaults={
-            "user": user,
-            "actor": actor or user,
-            "event_type": event_type,
-            "provider": provider[:32],
-            "source_ip": source_ip,
-            "user_agent": meta.get("HTTP_USER_AGENT", "")[:512],
-            "request_id": meta.get("HTTP_X_REQUEST_ID", "")[:128],
-        },
-    )[0]
+        defaults=values,
+    )
+    return event
 
 
 def authentication_dedupe_key(user_id, provider, authenticated_at):
