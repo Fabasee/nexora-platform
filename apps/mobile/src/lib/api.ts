@@ -131,3 +131,54 @@ export async function revokeIdentitySession(idToken: string, sessionId: string):
   );
   if (!response.ok) throw new ApiError("Unable to revoke Nexora session.", response.status);
 }
+
+
+export type NexoraCatalogProduct = {
+  key: string;
+  name: string;
+  description: string;
+  is_activated: boolean;
+  membership_status: "invited" | "active" | "suspended" | "revoked" | null;
+  subscription: {
+    status: "active" | "cancelled" | "expired";
+    plan: string;
+    plan_name: string;
+    tier: "free" | "pro";
+  } | null;
+};
+
+export async function fetchProductCatalog(idToken: string): Promise<NexoraCatalogProduct[]> {
+  const response = await fetch(`${getApiBaseUrl()}/api/v1/products/catalog/`, {
+    method: "GET",
+    headers: { Accept: "application/json", Authorization: `Bearer ${idToken}` },
+  });
+  if (!response.ok) throw new ApiError("Unable to load the Nexora product catalog.", response.status);
+  const payload = (await response.json()) as { results?: NexoraCatalogProduct[] };
+  if (!payload || !Array.isArray(payload.results)) {
+    throw new ApiError("The Nexora API returned an invalid product catalog.", response.status);
+  }
+  return payload.results;
+}
+
+export async function activateFreeProduct(idToken: string, productKey: string): Promise<void> {
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/v1/products/${encodeURIComponent(productKey)}/activate/`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+    },
+  );
+  if (!response.ok) {
+    let message = "Unable to activate this Nexora product.";
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      if (typeof payload.detail === "string") message = payload.detail;
+    } catch {
+      // Keep the safe generic message when the response is not JSON.
+    }
+    throw new ApiError(message, response.status);
+  }
+}
