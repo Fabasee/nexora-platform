@@ -40,3 +40,16 @@ class PortfolioEntryDetailSerializer(PortfolioEntrySerializer):
 
     class Meta(PortfolioEntrySerializer.Meta):
         fields = PortfolioEntrySerializer.Meta.fields + ("modules",)
+
+
+from .models import PortfolioAuditEvent
+
+
+class OfficePortfolioAuditEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PortfolioAuditEvent
+        fields = (
+            "id", "entry_key", "entry_name", "action", "source",
+            "actor_label", "changes", "occurred_at",
+        )
+        read_only_fields = fields
