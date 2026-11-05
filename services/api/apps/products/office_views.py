@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 
 from apps.identity.permissions import VerifiedEmailRequired
 
-from .models import ProductPortfolioEntry
-from .office_serializers import PortfolioEntryDetailSerializer, PortfolioEntrySerializer
+from .models import PortfolioAuditEvent, ProductPortfolioEntry
+from .office_serializers import (\n    OfficePortfolioAuditEventSerializer, PortfolioEntryDetailSerializer, PortfolioEntrySerializer,\n)
 
 
 class InternalOfficePermissionMixin:
@@ -112,3 +112,38 @@ class OfficePortfolioDetailView(InternalOfficePermissionMixin, APIView):
         if entry is None:
             raise Http404("Portfolio entry not found.")
         return Response(PortfolioEntryDetailSerializer(entry).data)
+
+
+
+class OfficePortfolioAuditView(InternalOfficePermissionMixin, APIView):
+    def get(self, request):
+        queryset = PortfolioAuditEvent.objects.select_related("actor")
+        entry_key = request.query_params.get("entry_key", "").strip()
+        action = request.query_params.get("action", "").strip()
+        source = request.query_params.get("source", "").strip()
+        if entry_key:
+            queryset = queryset.filter(entry_key=entry_key)
+        if action:
+            if action not in PortfolioAuditEvent.Action.values:
+                return Response({"detail": "Invalid action filter."}, status=status.HTTP_400_BAD_REQUEST)
+            queryset = queryset.filter(action=action)
+        if source:
+            if source not in PortfolioAuditEvent.Source.values:
+                return Response({"detail": "Invalid source filter."}, status=status.HTTP_400_BAD_REQUEST)
+            queryset = queryset.filter(source=source)
+        try:
+            limit = min(max(int(request.query_params.get("limit", 50)), 1), 100)
+            offset = max(int(request.query_params.get("offset", 0)), 0)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "limit and offset must be integers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        total = queryset.count()
+        page = queryset.order_by("-occurred_at", "-id")[offset:offset + limit]
+        return Response({
+            "count": total,
+            "limit": limit,
+            "offset": offset,
+            "results": OfficePortfolioAuditEventSerializer(page, many=True).data,
+        })
