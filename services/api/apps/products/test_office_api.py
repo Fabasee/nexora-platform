@@ -42,7 +42,7 @@ class OfficePortfolioApiTests(TestCase):
             "apps.identity.permissions.VerifiedEmailRequired.has_permission",
             return_value=True,
         ):
-            return self.client.get(path, params=params)
+            return self.client.get(path, data=params)
 
     def test_anonymous_user_cannot_access_office_portfolio(self):
         response = self.client.get("/api/v1/office/portfolio/")
