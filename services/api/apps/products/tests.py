@@ -4,7 +4,8 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.identity.models import IdentityProviderAccount, NexoraUser
-from .models import (Entitlement, PlanFeature, Product, ProductMembership, ProductPlan, ProductSubscription)\nfrom .services import (ProductAccessDenied, ProductAccessService, ProductActivationError, ProductActivationService)
+from .models import (Entitlement, PlanFeature, Product, ProductMembership, ProductPlan, ProductSubscription)
+from .services import (ProductAccessDenied, ProductAccessService, ProductActivationError, ProductActivationService)
 
 
 class ProductAccessServiceTests(TestCase):
