@@ -52,6 +52,7 @@ class OfficeSecurityEventsView(OfficeAccessPermissionMixin, APIView):
             "results": [{
                 "id": str(event.pk),
                 "user_id": str(event.user_id),
+                "actor_id": str(event.actor_id) if event.actor_id else None,
                 "event_type": event.event_type,
                 "occurred_at": event.occurred_at.isoformat(),
                 "provider": event.provider,
