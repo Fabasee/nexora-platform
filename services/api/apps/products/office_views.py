@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from apps.identity.permissions import VerifiedEmailRequired
 
 from .models import PortfolioAuditEvent, ProductPortfolioEntry
-from .office_serializers import (\n    OfficePortfolioAuditEventSerializer, PortfolioEntryDetailSerializer, PortfolioEntrySerializer,\n)
+from .office_serializers import (OfficePortfolioAuditEventSerializer, PortfolioEntryDetailSerializer, PortfolioEntrySerializer)
 
 
 class InternalOfficePermissionMixin:
