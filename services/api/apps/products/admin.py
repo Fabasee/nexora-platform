@@ -6,6 +6,7 @@ from .models import (
     Product,
     ProductMembership,
     ProductPlan,
+    ProductPortfolioEntry,
     ProductSubscription,
 )
 
@@ -50,3 +51,19 @@ class EntitlementAdmin(admin.ModelAdmin):
     list_display = ("user", "product", "feature_key", "status", "starts_at", "ends_at")
     list_filter = ("status", "product", "feature_key")
     search_fields = ("user__id", "product__key", "feature_key")
+
+
+@admin.register(ProductPortfolioEntry)
+class ProductPortfolioEntryAdmin(admin.ModelAdmin):
+    list_display = (
+        "name", "key", "entry_type", "parent", "lifecycle_status",
+        "decision_status", "priority", "delivery_model",
+    )
+    list_filter = (
+        "entry_type", "lifecycle_status", "decision_status",
+        "priority", "delivery_model", "category",
+    )
+    search_fields = ("key", "name", "description", "category", "parent__name")
+    autocomplete_fields = ("parent", "activation_product")
+    list_select_related = ("parent", "activation_product")
+    ordering = ("sort_order", "name")
