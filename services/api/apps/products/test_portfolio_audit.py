@@ -80,7 +80,7 @@ class OfficePortfolioAuditApiTests(TestCase):
         self.staff.is_staff = True
         self.staff.save(update_fields=("is_staff",))
         self.regular = NexoraUser.objects.create_user()
-        self.entry = ProductPortfolioEntry.objects.create(
+        self.entry = ProductPortfolioEntry(
             key="audit-api-app",
             name="Audit API App",
             entry_type=ProductPortfolioEntry.EntryType.APPLICATION,
