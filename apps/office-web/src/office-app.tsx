@@ -126,14 +126,20 @@ export function OfficeApp() {
       if (lifecycle) params.set("lifecycle_status", lifecycle);
       if (decision) params.set("decision_status", decision);
       const profile = await apiRequest<AccessProfile>(activeUser, "access/me/");
-      const [nextSummary, page] = await Promise.all([
-        apiRequest<Summary>(activeUser, "summary/"),
-        apiRequest<PortfolioPage>(activeUser, `portfolio/?${params.toString()}`),
-      ]);
       setAccessProfile(profile);
-      setSummary(nextSummary);
-      setEntries(page.results);
-      setTotal(page.count);
+      if (profile.permissions.includes("portfolio.view")) {
+        const [nextSummary, page] = await Promise.all([
+          apiRequest<Summary>(activeUser, "summary/"),
+          apiRequest<PortfolioPage>(activeUser, `portfolio/?${params.toString()}`),
+        ]);
+        setSummary(nextSummary);
+        setEntries(page.results);
+        setTotal(page.count);
+      } else {
+        setSummary(null);
+        setEntries([]);
+        setTotal(0);
+      }
       if (profile.permissions.includes("audit.view")) {
         const audit = await apiRequest<AuditPage>(activeUser, "audit/?limit=20&offset=0");
         setAuditEvents(audit.results);
@@ -248,7 +254,7 @@ export function OfficeApp() {
           <Metric label="Modules" value={summary.modules} detail="Fitur dalam aplikasi induk" icon="◈" />
           <Metric label="Platform services" value={summary.platform_services} detail="Layanan bersama ekosistem" icon="⌘" />
         </section>}
-        <section className="panel">
+        {accessProfile?.permissions.includes("portfolio.view") && <section className="panel">
           <div className="panel-heading"><div><h2>Portfolio registry</h2><p>{total} entri sesuai filter · Data dari registry pusat</p></div><span className="readonly-tag">READ ONLY</span></div>
           <div className="filters">
             <input aria-label="Cari portofolio" placeholder="Cari nama, key, deskripsi…" value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -266,7 +272,7 @@ export function OfficeApp() {
               </tr>)}
             </tbody></table></div>
           </div>)}
-        </section>
+        </section>}
         {accessProfile?.permissions.includes("audit.view") && <section className="panel audit-panel">
           <div className="panel-heading"><div><h2>Audit &amp; governance</h2><p>{auditTotal} aktivitas tercatat · Menampilkan 20 aktivitas terbaru</p></div><span className="readonly-tag">APPEND ONLY</span></div>
           {auditEvents.length === 0 ? <div className="empty-state">Belum ada aktivitas perubahan portofolio.</div> : <div className="table-wrap"><table><thead><tr><th>TIME</th><th>ENTRY</th><th>EVENT</th><th>SOURCE</th><th>ACTOR</th><th>CHANGES</th></tr></thead><tbody>
