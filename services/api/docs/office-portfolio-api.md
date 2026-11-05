@@ -28,3 +28,17 @@ List query parameters:
 - `offset`: zero-based offset (default 0)
 
 The portfolio API does not create runtime products, memberships, subscriptions, or entitlements. Those remain separate product-account lifecycle operations.
+
+
+## Portfolio audit history
+
+`GET /api/v1/office/audit/` returns the latest portfolio change events to
+authorized Office staff. It supports exact `entry_key`, `action` (`created`
+or `updated`), `source` (`admin` or `manifest`), and bounded
+`limit`/`offset` pagination (maximum 100 records per request).
+
+Each event includes the entry snapshot, actor label, source, timestamp, and
+field-level before/after values. Audit events are written transactionally with
+portfolio changes and are append-only at the application model/admin layer.
+They are not yet cryptographically tamper-proof against privileged database
+operators; see `office-portfolio-audit.md`.
