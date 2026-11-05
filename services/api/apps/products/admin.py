@@ -7,6 +7,7 @@ from .models import (
     ProductMembership,
     ProductPlan,
     ProductPortfolioEntry,
+    PortfolioAuditEvent,
     ProductSubscription,
 )
 
@@ -53,6 +54,9 @@ class EntitlementAdmin(admin.ModelAdmin):
     search_fields = ("user__id", "product__key", "feature_key")
 
 
+from .portfolio_audit import save_portfolio_entry
+
+
 @admin.register(ProductPortfolioEntry)
 class ProductPortfolioEntryAdmin(admin.ModelAdmin):
     list_display = (
@@ -67,3 +71,36 @@ class ProductPortfolioEntryAdmin(admin.ModelAdmin):
     autocomplete_fields = ("parent", "activation_product")
     list_select_related = ("parent", "activation_product")
     ordering = ("sort_order", "name")
+
+    def save_model(self, request, obj, form, change):
+        saved, _ = save_portfolio_entry(
+            entry=obj,
+            source=PortfolioAuditEvent.Source.ADMIN,
+            actor=request.user,
+        )
+        obj.pk = saved.pk
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PortfolioAuditEvent)
+class PortfolioAuditEventAdmin(admin.ModelAdmin):
+    list_display = ("occurred_at", "entry_key", "action", "source", "actor_label")
+    list_filter = ("action", "source", "occurred_at")
+    search_fields = ("entry_key", "entry_name", "actor_label")
+    readonly_fields = (
+        "id", "entry", "entry_key", "entry_name", "action", "source",
+        "actor", "actor_label", "changes", "occurred_at",
+    )
+    ordering = ("-occurred_at",)
+    date_hierarchy = "occurred_at"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
