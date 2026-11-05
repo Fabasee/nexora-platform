@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.contrib.auth.models import Group
 from rest_framework.test import APIClient
 from unittest.mock import patch
 
@@ -101,6 +102,7 @@ class OfficePortfolioAuditApiTests(TestCase):
         self.staff = NexoraUser.objects.create_user()
         self.staff.is_staff = True
         self.staff.save(update_fields=("is_staff",))
+        self.staff.groups.add(Group.objects.create(name="Office Auditor"))
         self.regular = NexoraUser.objects.create_user()
         self.entry = ProductPortfolioEntry(
             key="audit-api-app",
@@ -122,7 +124,7 @@ class OfficePortfolioAuditApiTests(TestCase):
         self.assertEqual(anonymous.status_code, 401)
 
         self.client.force_authenticate(user=self.regular)
-        with patch("apps.identity.permissions.VerifiedEmailRequired.has_permission", return_value=True):
+        with patch("apps.identity.office_access.OfficeAccessPermission.has_permission", return_value=True):
             denied = self.client.get("/api/v1/office/audit/")
         self.assertEqual(denied.status_code, 403)
 
