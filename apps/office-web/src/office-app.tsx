@@ -39,6 +39,9 @@ type PortfolioEntry = {
 type PortfolioPage = { count: number; limit: number; offset: number; results: PortfolioEntry[] };
 type AuditEvent = { id: string; entry_key: string; entry_name: string; action: "created" | "updated"; source: "admin" | "manifest"; actor_label: string; changes: Record<string, { before: string | null; after: string | null }>; occurred_at: string };
 type AuditPage = { count: number; limit: number; offset: number; results: AuditEvent[] };
+type AccessProfile = { user_id: string; roles: string[]; permissions: string[] };
+type SecurityEvent = { id: string; user_id: string; event_type: string; occurred_at: string; provider: string; source_ip: string | null; user_agent: string; request_id: string };
+type SecurityEventPage = { count: number; limit: number; offset: number; results: SecurityEvent[] };
 type Summary = {
   total_entries: number;
   applications: number;
@@ -90,6 +93,9 @@ export function OfficeApp() {
   const [total, setTotal] = useState(0);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [auditTotal, setAuditTotal] = useState(0);
+  const [accessProfile, setAccessProfile] = useState<AccessProfile | null>(null);
+  const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
+  const [securityEventTotal, setSecurityEventTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [lifecycle, setLifecycle] = useState("");
@@ -119,16 +125,26 @@ export function OfficeApp() {
       if (type) params.set("entry_type", type);
       if (lifecycle) params.set("lifecycle_status", lifecycle);
       if (decision) params.set("decision_status", decision);
-      const [nextSummary, page, audit] = await Promise.all([
+      const [profile, nextSummary, page, audit] = await Promise.all([
+        apiRequest<AccessProfile>(activeUser, "access/me/"),
         apiRequest<Summary>(activeUser, "summary/"),
         apiRequest<PortfolioPage>(activeUser, `portfolio/?${params.toString()}`),
         apiRequest<AuditPage>(activeUser, "audit/?limit=20&offset=0"),
       ]);
+      setAccessProfile(profile);
       setSummary(nextSummary);
       setEntries(page.results);
       setTotal(page.count);
       setAuditEvents(audit.results);
       setAuditTotal(audit.count);
+      if (profile.permissions.includes("security.view")) {
+        const security = await apiRequest<SecurityEventPage>(activeUser, "access/security-events/?limit=20&offset=0");
+        setSecurityEvents(security.results);
+        setSecurityEventTotal(security.count);
+      } else {
+        setSecurityEvents([]);
+        setSecurityEventTotal(0);
+      }
       setNotice(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Dashboard tidak dapat dimuat.");
@@ -215,7 +231,7 @@ export function OfficeApp() {
         <div className="nav-item muted"><span>◈</span> Product architecture <em>Soon</em></div>
         <div className="nav-item muted"><span>⌁</span> Operations <em>Soon</em></div>
         <div className="nav-item muted"><span>◉</span> Security & access <em>Soon</em></div>
-        <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(user.email?.[0] ?? "S").toUpperCase()}</span><div><b>{user.email}</b><small>Signed in · Staff access checked by API</small></div></div><button className="button ghost full" onClick={() => void signOut(auth)}>Keluar</button></div>
+        <div className="sidebar-bottom"><div className="user-chip"><span className="user-avatar">{(user.email?.[0] ?? "S").toUpperCase()}</span><div><b>{user.email}</b><small>{accessProfile?.roles.map(label).join(" · ") || "Role not loaded"}</small></div></div><button className="button ghost full" onClick={() => void signOut(auth)}>Keluar</button></div>
       </aside>
       <main className="main-content">
         <header className="topbar"><div><span className="breadcrumb">Workspace / <b>Portfolio overview</b></span><h1>Product portfolio</h1><p>Kelola visibilitas struktur dan status ekosistem Nexora.</p></div><button className="button secondary" onClick={() => void loadDashboard(user)} disabled={busy}>↻ <span>Refresh data</span></button></header>
@@ -269,7 +285,20 @@ export function OfficeApp() {
             </tr>)}
           </tbody></table></div>}
         </section>
-        <footer className="page-footer">NEXORA OFFICE <span>•</span> Internal portfolio workspace <span>•</span> Read-only phase</footer>
+        {accessProfile?.permissions.includes("security.view") && <section className="panel audit-panel">
+          <div className="panel-heading"><div><h2>Security activity</h2><p>{securityEventTotal} event tercatat · Menampilkan 20 event terbaru</p></div><span className="readonly-tag">SECURITY</span></div>
+          {securityEvents.length === 0 ? <div className="empty-state">Belum ada aktivitas keamanan.</div> : <div className="table-wrap"><table><thead><tr><th>TIME</th><th>ACCOUNT</th><th>EVENT</th><th>PROVIDER</th><th>IP ADDRESS</th><th>REQUEST ID</th></tr></thead><tbody>
+            {securityEvents.map((event) => <tr key={event.id}>
+              <td>{new Date(event.occurred_at).toLocaleString()}</td>
+              <td><span className="entry-key">{event.user_id}</span></td>
+              <td><Status value={event.event_type} /></td>
+              <td>{event.provider || "—"}</td>
+              <td>{event.source_ip || "—"}</td>
+              <td><span className="entry-key">{event.request_id || "—"}</span></td>
+            </tr>)}
+          </tbody></table></div>}
+        </section>}
+        <footer className="page-footer">NEXORA OFFICE <span>•</span> Internal portfolio workspace <span>•</span> Role-based access</footer>
       </main>
       {selected && <div className="drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail-drawer"><div className="drawer-head"><span className="eyebrow">PORTFOLIO DETAIL</span><button className="close-button" onClick={() => setSelected(null)} aria-label="Tutup detail">×</button></div><span className="detail-type">{label(selected.entry_type)}</span><h2>{selected.name}</h2><code>{selected.key}</code><p className="detail-description">{selected.description || "Belum ada deskripsi."}</p><div className="detail-grid"><div><small>Development</small><b>{label(selected.lifecycle_status)}</b></div><div><small>Decision</small><b>{label(selected.decision_status)}</b></div><div><small>Priority</small><b>{label(selected.priority)}</b></div><div><small>Delivery model</small><b>{label(selected.delivery_model)}</b></div></div>{selected.parent && <div className="detail-section"><small>PARENT APPLICATION</small><b>{selected.parent.name}</b><code>{selected.parent.key}</code></div>}<div className="detail-section"><small>CHILD MODULES · {selected.modules?.length ?? selected.module_count}</small>{selected.modules?.length ? selected.modules.map((module) => <div className="module-row" key={module.key}><b>{module.name}</b><span>{label(module.lifecycle_status)} · {label(module.decision_status)}</span></div>) : <p className="muted-copy">Tidak ada modul langsung.</p>}</div><div className="detail-section"><small>RUNTIME PRODUCT LINK</small><p className="muted-copy">{selected.activation_product_key ?? "Belum dihubungkan ke runtime product."}</p></div></aside></div>}
     </div>
