@@ -1,0 +1,42 @@
+name: API checks
+
+on:
+  push:
+    paths:
+      - "services/api/**"
+      - ".github/workflows/api-checks.yml"
+  pull_request:
+    paths:
+      - "services/api/**"
+      - ".github/workflows/api-checks.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  django-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    env:
+      # Explicitly isolated, disposable settings for CI only.
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: "ci-only-not-a-production-secret-key-rotate-never-use-this-value"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: services/api/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py test
+      - run: python -m compileall -q .
