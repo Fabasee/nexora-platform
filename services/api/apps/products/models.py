@@ -234,7 +234,7 @@ class ProductPortfolioEntry(models.Model):
         ordering = ("sort_order", "name")
         indexes = [
             models.Index(fields=("entry_type", "lifecycle_status"), name="portfolio_type_stage_idx"),
-            models.Index(fields=("decision_status", "priority"), name="portfolio_decision_priority_idx"),
+            models.Index(fields=("decision_status", "priority"), name="portfolio_decision_idx"),
         ]
 
     def clean(self):
