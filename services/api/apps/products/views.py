@@ -83,3 +83,45 @@ class ProductSubscriptionView(APIView):
             "current_period_end": subscription.current_period_end,
             "auto_renew": subscription.auto_renew,
         })
+
+
+class ProductCatalogView(APIView):
+    """List active products and the requesting user's own activation state."""
+
+    permission_classes = [IsAuthenticated, VerifiedEmailRequired]
+
+    def get(self, request):
+        from .models import Product, ProductMembership
+
+        products = Product.objects.filter(status=Product.Status.ACTIVE).order_by("name")
+        memberships = {
+            item.product_id: item
+            for item in ProductMembership.objects.filter(user=request.user, product__in=products)
+        }
+        subscriptions = {
+            item.product_id: item
+            for item in ProductSubscription.objects.select_related("plan").filter(
+                user=request.user, product__in=products
+            )
+        }
+        results = []
+        for product in products:
+            membership = memberships.get(product.pk)
+            subscription = subscriptions.get(product.pk)
+            results.append({
+                "key": product.key,
+                "name": product.name,
+                "description": product.description,
+                "is_activated": bool(
+                    membership and membership.status == ProductMembership.Status.ACTIVE
+                    and subscription and subscription.status == ProductSubscription.Status.ACTIVE
+                ),
+                "membership_status": membership.status if membership else None,
+                "subscription": ({
+                    "status": subscription.status,
+                    "plan": subscription.plan.key,
+                    "plan_name": subscription.plan.name,
+                    "tier": subscription.plan.tier,
+                } if subscription else None),
+            })
+        return Response({"results": results})
