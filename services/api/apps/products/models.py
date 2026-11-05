@@ -56,6 +56,88 @@ class ProductMembership(models.Model):
         return f"{self.user_id}:{self.product.key}"
 
 
+class ProductPlan(models.Model):
+    class Tier(models.TextChoices):
+        FREE = "free", "Free"
+        PRO = "pro", "Pro"
+
+    class BillingInterval(models.TextChoices):
+        NONE = "none", "No billing"
+        MONTHLY = "monthly", "Monthly"
+        YEARLY = "yearly", "Yearly"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="plans")
+    key = models.SlugField(max_length=40)
+    name = models.CharField(max_length=80)
+    tier = models.CharField(max_length=12, choices=Tier.choices)
+    price_minor = models.PositiveBigIntegerField(default=0)
+    currency = models.CharField(max_length=3, default="IDR")
+    billing_interval = models.CharField(max_length=12, choices=BillingInterval.choices, default=BillingInterval.NONE)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "products_plan"
+        constraints = [
+            models.UniqueConstraint(fields=("product", "key"), name="products_plan_product_key_uniq"),
+        ]
+        indexes = [models.Index(fields=("product", "tier", "is_active"), name="products_plan_tier_idx")]
+
+    def __str__(self):
+        return f"{self.product.key}:{self.key}"
+
+
+class PlanFeature(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    plan = models.ForeignKey(ProductPlan, on_delete=models.CASCADE, related_name="features")
+    feature_key = models.SlugField(max_length=80)
+    scope = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "products_plan_feature"
+        constraints = [
+            models.UniqueConstraint(fields=("plan", "feature_key"), name="products_plan_feature_uniq"),
+        ]
+
+    def __str__(self):
+        return f"{self.plan}:{self.feature_key}"
+
+
+class ProductSubscription(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        CANCELLED = "cancelled", "Cancelled"
+        EXPIRED = "expired", "Expired"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="product_subscriptions")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="subscriptions")
+    plan = models.ForeignKey(ProductPlan, on_delete=models.PROTECT, related_name="subscriptions")
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.ACTIVE)
+    started_at = models.DateTimeField(default=timezone.now)
+    current_period_start = models.DateTimeField(default=timezone.now)
+    current_period_end = models.DateTimeField(null=True, blank=True)
+    auto_renew = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "products_subscription"
+        constraints = [
+            models.UniqueConstraint(fields=("user", "product"), name="products_user_product_sub_uniq"),
+        ]
+        indexes = [
+            models.Index(fields=("user", "status"), name="products_sub_user_status_idx"),
+            models.Index(fields=("product", "plan", "status"), name="products_sub_plan_status_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.product.key}:{self.plan.key}"
+
+
 class Entitlement(models.Model):
     class Status(models.TextChoices):
         ACTIVE = "active", "Active"
