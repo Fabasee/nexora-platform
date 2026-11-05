@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -30,7 +32,7 @@ class OfficeSecurityEventsView(OfficeAccessPermissionMixin, APIView):
     allowed_types = SecurityEvent.EventType.values
 
     def get(self, request):
-        queryset = SecurityEvent.objects.select_related("user").order_by("-occurred_at", "-id")
+        queryset = SecurityEvent.objects.select_related("user", "actor").order_by("-occurred_at", "-id")
         event_type = request.query_params.get("event_type", "").strip()
         if event_type:
             if event_type not in self.allowed_types:
@@ -38,6 +40,10 @@ class OfficeSecurityEventsView(OfficeAccessPermissionMixin, APIView):
             queryset = queryset.filter(event_type=event_type)
         user_id = request.query_params.get("user_id", "").strip()
         if user_id:
+            try:
+                user_id = UUID(user_id)
+            except (TypeError, ValueError, AttributeError):
+                return Response({"detail": "user_id must be a valid UUID."}, status=status.HTTP_400_BAD_REQUEST)
             queryset = queryset.filter(user_id=user_id)
         try:
             limit = min(max(int(request.query_params.get("limit", 50)), 1), 100)
@@ -72,10 +78,9 @@ class OfficeSessionListView(OfficeAccessPermissionMixin, APIView):
         ).order_by("-last_seen_at", "-id")
         user_id = request.query_params.get("user_id", "").strip()
         if user_id:
-            import uuid
             try:
-                user_id = uuid.UUID(user_id)
-            except (TypeError, ValueError):
+                user_id = UUID(user_id)
+            except (TypeError, ValueError, AttributeError):
                 return Response({"detail": "user_id must be a valid UUID."}, status=status.HTTP_400_BAD_REQUEST)
             queryset = queryset.filter(provider_account__user_id=user_id)
         active = request.query_params.get("active", "").strip().lower()
@@ -115,8 +120,10 @@ class OfficeSessionRevokeView(OfficeAccessPermissionMixin, APIView):
             IdentitySession.objects.select_related("provider_account"), pk=session_id
         )
         if str(session.pk) == str(getattr(request, "nexora_session_id", "")):
-            return Response({"detail": "The current operator session cannot be revoked from this endpoint."},
-                            status=status.HTTP_409_CONFLICT)
+            return Response(
+                {"detail": "The current operator session cannot be revoked from this endpoint."},
+                status=status.HTTP_409_CONFLICT,
+            )
         if session.revoked_at is not None:
             return Response({"status": "already_revoked", "session_id": str(session.pk)})
         now = timezone.now()
@@ -154,5 +161,9 @@ class OfficeUserSessionsRevokeView(OfficeAccessPermissionMixin, APIView):
                     provider=session.provider_account.provider,
                 )
                 revoked_ids.append(str(session.pk))
-        return Response({"status": "revoked", "user_id": str(user.pk),
-                         "revoked_count": len(revoked_ids), "session_ids": revoked_ids})
+        return Response({
+            "status": "revoked",
+            "user_id": str(user.pk),
+            "revoked_count": len(revoked_ids),
+            "session_ids": revoked_ids,
+        })
