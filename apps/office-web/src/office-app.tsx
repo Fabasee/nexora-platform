@@ -85,6 +85,13 @@ async function apiRequest<T>(user: User, path: string, method = "GET"): Promise<
 
 const label = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 
+function describeDevice(userAgent: string) {
+  if (!userAgent) return "Unknown device";
+  const os = /Android/i.test(userAgent) ? "Android" : /iPhone|iPad|iPod/i.test(userAgent) ? "iOS" : /Windows/i.test(userAgent) ? "Windows" : /Mac OS|Macintosh/i.test(userAgent) ? "macOS" : /Linux/i.test(userAgent) ? "Linux" : "Unknown OS";
+  const browser = /Edg\//i.test(userAgent) ? "Edge" : /Firefox\//i.test(userAgent) ? "Firefox" : /Chrome\//i.test(userAgent) ? "Chrome" : /Safari\//i.test(userAgent) ? "Safari" : /SamsungBrowser/i.test(userAgent) ? "Samsung Internet" : "Unknown browser";
+  return `${browser} · ${os}`;
+}
+
 export function OfficeApp() {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(!auth);
@@ -192,6 +199,21 @@ export function OfficeApp() {
       await loadDashboard(user);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Sesi gagal dicabut.");
+    } finally {
+      setSessionActionBusy(null);
+    }
+  }
+
+  async function revokeAccountSessions(userId: string) {
+    if (!user || !window.confirm("Cabut semua sesi aktif akun ini? Sesi operator yang sedang digunakan akan dipertahankan.")) return;
+    setSessionActionBusy(userId);
+    setError(null);
+    try {
+      const result = await apiRequest<{ revoked_count: number }>(user, `access/users/${userId}/sessions/revoke/`, "POST");
+      setNotice(`${result.revoked_count} sesi berhasil dicabut.`);
+      await loadDashboard(user);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Sesi akun gagal dicabut.");
     } finally {
       setSessionActionBusy(null);
     }
@@ -341,10 +363,11 @@ export function OfficeApp() {
         </section>}
         {accessProfile?.permissions.includes("sessions.manage") && <section className="panel audit-panel">
           <div className="panel-heading"><div><h2>Session &amp; device management</h2><p>{officeSessionTotal} active sessions · Latest 50 sessions</p></div><span className="readonly-tag">SESSION CONTROL</span></div>
+          {officeSessions.length > 0 && <div className="session-account-actions">{Array.from(new Set(officeSessions.map((session) => session.user_id))).map((accountId) => <button key={accountId} className="button secondary" disabled={sessionActionBusy === accountId} onClick={() => void revokeAccountSessions(accountId)}>{sessionActionBusy === accountId ? "Revoking…" : `Revoke all · ${accountId.slice(0, 8)}`}</button>)}</div>}
           {officeSessions.length === 0 ? <div className="empty-state">Tidak ada sesi aktif.</div> : <div className="table-wrap"><table><thead><tr><th>ACCOUNT</th><th>DEVICE / BROWSER</th><th>LAST SEEN</th><th>IP ADDRESS</th><th>MFA</th><th>ACTION</th></tr></thead><tbody>
             {officeSessions.map((session) => <tr key={session.id}>
               <td><span className="entry-key">{session.user_id}</span></td>
-              <td><div className="entry-name" title={session.user_agent}>{session.user_agent || "Unknown device"}</div><div className="entry-key">{session.provider} · {session.id.slice(0, 8)}</div></td>
+              <td><div className="entry-name" title={session.user_agent}>{describeDevice(session.user_agent)}</div><div className="entry-key">{session.provider} · {session.id.slice(0, 8)} · {new Date(session.authenticated_at).toLocaleString()}</div></td>
               <td>{new Date(session.last_seen_at).toLocaleString()}</td>
               <td>{session.source_ip || "—"}</td>
               <td>{session.mfa_verified ? label(session.second_factor_type || "verified") : "Not verified"}</td>
