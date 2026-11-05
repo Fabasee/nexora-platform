@@ -101,6 +101,7 @@ class IdentitySessionRevokeView(APIView):
         session.save(update_fields=("revoked_at",))
         record_security_event(
             user=request.user,
+            actor=request.user,
             event_type=SecurityEvent.EventType.SESSION_REVOKED,
             request=request,
             provider=session.provider_account.provider,
