@@ -1,23 +1,23 @@
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404
 from rest_framework import status
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.identity.permissions import VerifiedEmailRequired
+from apps.identity.office_access import OfficeAccessPermission
 
 from .models import PortfolioAuditEvent, ProductPortfolioEntry
 from .office_serializers import (OfficePortfolioAuditEventSerializer, PortfolioEntryDetailSerializer, PortfolioEntrySerializer)
 
 
 class InternalOfficePermissionMixin:
-    """Keep internal ecosystem operations separate from consumer product APIs."""
+    """Require verified staff identity and a least-privilege Office role."""
 
-    permission_classes = (IsAdminUser, VerifiedEmailRequired)
+    permission_classes = (OfficeAccessPermission,)
 
 
 class OfficePortfolioSummaryView(InternalOfficePermissionMixin, APIView):
+    office_permission = "portfolio.view"
     def get(self, request):
         queryset = ProductPortfolioEntry.objects.all()
         return Response({
@@ -47,6 +47,7 @@ class OfficePortfolioSummaryView(InternalOfficePermissionMixin, APIView):
 
 
 class OfficePortfolioListView(InternalOfficePermissionMixin, APIView):
+    office_permission = "portfolio.view"
     filter_fields = {
         "entry_type": ProductPortfolioEntry.EntryType.values,
         "lifecycle_status": ProductPortfolioEntry.LifecycleStatus.values,
@@ -103,6 +104,7 @@ class OfficePortfolioListView(InternalOfficePermissionMixin, APIView):
 
 
 class OfficePortfolioDetailView(InternalOfficePermissionMixin, APIView):
+    office_permission = "portfolio.view"
     def get(self, request, key):
         entry = ProductPortfolioEntry.objects.select_related(
             "parent", "activation_product"
@@ -116,6 +118,7 @@ class OfficePortfolioDetailView(InternalOfficePermissionMixin, APIView):
 
 
 class OfficePortfolioAuditView(InternalOfficePermissionMixin, APIView):
+    office_permission = "audit.view"
     def get(self, request):
         queryset = PortfolioAuditEvent.objects.select_related("actor")
         entry_key = request.query_params.get("entry_key", "").strip()
