@@ -1,13 +1,15 @@
 from django.contrib import admin
 
+from .portfolio_audit import save_portfolio_entry
+
 from .models import (
     Entitlement,
     PlanFeature,
     Product,
     ProductMembership,
+    PortfolioAuditEvent,
     ProductPlan,
     ProductPortfolioEntry,
-    PortfolioAuditEvent,
     ProductSubscription,
 )
 
@@ -52,9 +54,6 @@ class EntitlementAdmin(admin.ModelAdmin):
     list_display = ("user", "product", "feature_key", "status", "starts_at", "ends_at")
     list_filter = ("status", "product", "feature_key")
     search_fields = ("user__id", "product__key", "feature_key")
-
-
-from .portfolio_audit import save_portfolio_entry
 
 
 @admin.register(ProductPortfolioEntry)
