@@ -2,8 +2,8 @@ from rest_framework.permissions import BasePermission
 
 
 OFFICE_ROLE_PERMISSIONS = {
-    "Office Owner": frozenset({"portfolio.view", "audit.view", "security.view", "access.manage", "access.view_self"}),
-    "Office Security Admin": frozenset({"security.view", "access.manage", "access.view_self"}),
+    "Office Owner": frozenset({"portfolio.view", "audit.view", "security.view", "sessions.manage", "access.manage", "access.view_self"}),
+    "Office Security Admin": frozenset({"security.view", "sessions.manage", "access.manage", "access.view_self"}),
     "Office Portfolio Manager": frozenset({"portfolio.view", "audit.view", "access.view_self"}),
     "Office Auditor": frozenset({"audit.view", "security.view", "access.view_self"}),
     "Office Portfolio Viewer": frozenset({"portfolio.view", "access.view_self"}),
