@@ -37,6 +37,8 @@ type PortfolioEntry = {
   }>;
 };
 type PortfolioPage = { count: number; limit: number; offset: number; results: PortfolioEntry[] };
+type AuditEvent = { id: string; entry_key: string; entry_name: string; action: "created" | "updated"; source: "admin" | "manifest"; actor_label: string; changes: Record<string, { before: string | null; after: string | null }>; occurred_at: string };
+type AuditPage = { count: number; limit: number; offset: number; results: AuditEvent[] };
 type Summary = {
   total_entries: number;
   applications: number;
@@ -86,6 +88,8 @@ export function OfficeApp() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [entries, setEntries] = useState<PortfolioEntry[]>([]);
   const [total, setTotal] = useState(0);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [lifecycle, setLifecycle] = useState("");
@@ -115,13 +119,16 @@ export function OfficeApp() {
       if (type) params.set("entry_type", type);
       if (lifecycle) params.set("lifecycle_status", lifecycle);
       if (decision) params.set("decision_status", decision);
-      const [nextSummary, page] = await Promise.all([
+      const [nextSummary, page, audit] = await Promise.all([
         apiRequest<Summary>(activeUser, "summary/"),
         apiRequest<PortfolioPage>(activeUser, `portfolio/?${params.toString()}`),
+        apiRequest<AuditPage>(activeUser, "audit/?limit=20&offset=0"),
       ]);
       setSummary(nextSummary);
       setEntries(page.results);
       setTotal(page.count);
+      setAuditEvents(audit.results);
+      setAuditTotal(audit.count);
       setNotice(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Dashboard tidak dapat dimuat.");
@@ -238,6 +245,19 @@ export function OfficeApp() {
               </tr>)}
             </tbody></table></div>
           </div>)}
+        </section>
+        <section className="panel audit-panel">
+          <div className="panel-heading"><div><h2>Audit &amp; governance</h2><p>{auditTotal} aktivitas tercatat · Menampilkan 20 aktivitas terbaru</p></div><span className="readonly-tag">APPEND ONLY</span></div>
+          {auditEvents.length === 0 ? <div className="empty-state">Belum ada aktivitas perubahan portofolio.</div> : <div className="table-wrap"><table><thead><tr><th>TIME</th><th>ENTRY</th><th>EVENT</th><th>SOURCE</th><th>ACTOR</th><th>CHANGES</th></tr></thead><tbody>
+            {auditEvents.map((event) => <tr key={event.id}>
+              <td>{new Date(event.occurred_at).toLocaleString()}</td>
+              <td><div className="entry-name">{event.entry_name}</div><div className="entry-key">{event.entry_key}</div></td>
+              <td><Status value={event.action} /></td>
+              <td>{label(event.source)}</td>
+              <td>{event.actor_label || "System / automation"}</td>
+              <td>{Object.keys(event.changes).length} field(s)</td>
+            </tr>)}
+          </tbody></table></div>}
         </section>
         <footer className="page-footer">NEXORA OFFICE <span>•</span> Internal portfolio workspace <span>•</span> Read-only phase</footer>
       </main>
