@@ -1,9 +1,11 @@
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.contrib.auth.models import Group
 from rest_framework.test import APIClient
 
 from apps.identity.models import NexoraUser
+from apps.identity.office_access import get_office_permissions
 from .models import ProductPortfolioEntry
 
 
@@ -13,6 +15,7 @@ class OfficePortfolioApiTests(TestCase):
         self.staff_user = NexoraUser.objects.create_user()
         self.staff_user.is_staff = True
         self.staff_user.save(update_fields=("is_staff",))
+        self.staff_user.groups.add(Group.objects.create(name="Office Portfolio Manager"))
         self.regular_user = NexoraUser.objects.create_user()
         self.application = ProductPortfolioEntry.objects.create(
             key="office-test-app",
@@ -38,10 +41,9 @@ class OfficePortfolioApiTests(TestCase):
 
     def _staff_get(self, path, params=None):
         self.client.force_authenticate(user=self.staff_user)
-        with patch(
-            "apps.identity.permissions.VerifiedEmailRequired.has_permission",
-            return_value=True,
-        ):
+        def allowed(request, view):
+            return request.user.is_staff and getattr(view, "office_permission", "") in get_office_permissions(request.user)
+        with patch("apps.identity.office_access.OfficeAccessPermission.has_permission", side_effect=allowed):
             return self.client.get(path, data=params)
 
     def test_anonymous_user_cannot_access_office_portfolio(self):
@@ -50,10 +52,7 @@ class OfficePortfolioApiTests(TestCase):
 
     def test_regular_authenticated_user_cannot_access_office_portfolio(self):
         self.client.force_authenticate(user=self.regular_user)
-        with patch(
-            "apps.identity.permissions.VerifiedEmailRequired.has_permission",
-            return_value=True,
-        ):
+        with patch("apps.identity.office_access.OfficeAccessPermission.has_permission", return_value=False):
             response = self.client.get("/api/v1/office/portfolio/")
         self.assertEqual(response.status_code, 403)
 
