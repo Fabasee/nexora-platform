@@ -255,7 +255,17 @@ export function OfficeApp() {
               <td><Status value={event.action} /></td>
               <td>{label(event.source)}</td>
               <td>{event.actor_label || "System / automation"}</td>
-              <td>{Object.keys(event.changes).length} field(s)</td>
+              <td><details className="audit-change-details">
+                <summary>{Object.keys(event.changes).length} field(s)</summary>
+                <div className="audit-change-list">
+                  {Object.entries(event.changes).map(([field, values]) => <div className="audit-change" key={field}>
+                    <b>{label(field)}</b>
+                    <span className="audit-before">{values.before ?? "—"}</span>
+                    <span className="audit-arrow">→</span>
+                    <span className="audit-after">{values.after ?? "—"}</span>
+                  </div>)}
+                </div>
+              </details></td>
             </tr>)}
           </tbody></table></div>}
         </section>
