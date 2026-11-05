@@ -162,3 +162,90 @@ class Entitlement(models.Model):
 
     def __str__(self):
         return f"{self.product.key}:{self.feature_key}:{self.user_id}"
+
+
+class ProductPortfolioEntry(models.Model):
+    """Governed portfolio record; not every entry is an activatable product."""
+
+    class EntryType(models.TextChoices):
+        APPLICATION = "application", "Application"
+        MODULE = "module", "Module"
+        PLATFORM_SERVICE = "platform_service", "Platform service"
+
+    class LifecycleStatus(models.TextChoices):
+        IN_DEVELOPMENT = "in_development", "In development"
+        PLANNED = "planned", "Planned"
+        RESEARCH = "research", "Research"
+        PROPOSED = "proposed", "Proposed"
+        LIVE = "live", "Live"
+        PAUSED = "paused", "Paused"
+
+    class DecisionStatus(models.TextChoices):
+        CONFIRMED = "confirmed", "Confirmed direction"
+        CANDIDATE = "candidate", "Candidate / needs validation"
+
+    class Priority(models.TextChoices):
+        CORE = "core", "Core"
+        VIRAL = "viral", "Viral growth"
+        STRATEGIC = "strategic", "Strategic"
+        SUPPORTING = "supporting", "Supporting"
+        FUTURE = "future", "Future"
+
+    class DeliveryModel(models.TextChoices):
+        STANDALONE = "standalone", "Standalone application"
+        MODULE = "module", "Feature / module"
+        SHARED = "shared", "Shared platform service"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.SlugField(max_length=80, unique=True)
+    name = models.CharField(max_length=120)
+    entry_type = models.CharField(max_length=24, choices=EntryType.choices)
+    category = models.CharField(max_length=64)
+    description = models.CharField(max_length=500, blank=True)
+    parent = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="modules",
+    )
+    lifecycle_status = models.CharField(
+        max_length=20, choices=LifecycleStatus.choices,
+        default=LifecycleStatus.PROPOSED,
+    )
+    decision_status = models.CharField(
+        max_length=12, choices=DecisionStatus.choices,
+        default=DecisionStatus.CANDIDATE,
+    )
+    priority = models.CharField(
+        max_length=12, choices=Priority.choices, default=Priority.FUTURE,
+    )
+    delivery_model = models.CharField(
+        max_length=12, choices=DeliveryModel.choices,
+        default=DeliveryModel.STANDALONE,
+    )
+    activation_product = models.ForeignKey(
+        Product, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="portfolio_entries",
+    )
+    sort_order = models.PositiveIntegerField(default=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "products_portfolio_entry"
+        ordering = ("sort_order", "name")
+        indexes = [
+            models.Index(fields=("entry_type", "lifecycle_status"), name="portfolio_type_stage_idx"),
+            models.Index(fields=("decision_status", "priority"), name="portfolio_decision_priority_idx"),
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.parent_id and self.parent_id == self.pk:
+            raise ValidationError({"parent": "A portfolio entry cannot be its own parent."})
+        if self.entry_type == self.EntryType.MODULE and not self.parent_id:
+            raise ValidationError({"parent": "A module must belong to a parent application."})
+        if self.entry_type != self.EntryType.MODULE and self.parent_id:
+            raise ValidationError({"parent": "Only modules can have a parent portfolio entry."})
+
+    def __str__(self):
+        return f"{self.key} ({self.lifecycle_status})"
