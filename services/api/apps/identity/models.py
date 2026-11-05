@@ -83,6 +83,13 @@ class SecurityEvent(models.Model):
         on_delete=models.PROTECT,
         related_name="security_events",
     )
+    actor = models.ForeignKey(
+        NexoraUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="security_actions",
+    )
     event_type = models.CharField(max_length=64, choices=EventType.choices)
     occurred_at = models.DateTimeField(auto_now_add=True)
     provider = models.CharField(max_length=32, blank=True)
