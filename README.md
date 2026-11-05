@@ -56,6 +56,8 @@ docs/development/        Local setup and contribution workflow
 - Server-verified email status and verified-email enforcement for the product catalog.
 - Scoped rate limit for session revocation operations.
 - Authenticated product catalog endpoint at `GET /api/v1/products/`.
+- Account-scoped live product catalog at `GET /api/v1/products/catalog/`, including each product's activation and subscription state.
+- Expo product catalog screen with server-backed Free activation at `apps/mobile/app/catalog.tsx`.
 - Product activation endpoint at `POST /api/v1/products/{product_key}/activate/` and current subscription endpoint at `GET /api/v1/products/{product_key}/subscription/`.
 - Django migrations, focused identity/access tests, and GitHub Actions checks.
 
