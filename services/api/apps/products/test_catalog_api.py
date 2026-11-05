@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -15,7 +17,8 @@ class ProductCatalogApiTests(TestCase):
             key="future-app", name="Future App", status=Product.Status.MAINTENANCE
         )
 
-    def test_catalog_includes_active_products_and_account_specific_state(self):
+    @patch("apps.identity.permissions.VerifiedEmailRequired.has_permission", return_value=True)
+    def test_catalog_includes_active_products_and_account_specific_state(self, _permission):
         response = self.client.get("/api/v1/products/catalog/")
 
         self.assertEqual(response.status_code, 200)
@@ -29,7 +32,8 @@ class ProductCatalogApiTests(TestCase):
             "subscription": None,
         })
 
-    def test_catalog_reports_active_membership_and_subscription(self):
+    @patch("apps.identity.permissions.VerifiedEmailRequired.has_permission", return_value=True)
+    def test_catalog_reports_active_membership_and_subscription(self, _permission):
         plan = ProductPlan.objects.create(
             product=self.active,
             key="free",
