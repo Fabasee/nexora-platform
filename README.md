@@ -47,6 +47,8 @@ docs/development/        Local setup and contribution workflow
 - Firebase ID-token verification with revocation checks.
 - Provider-neutral identity resolution with a unique provider-subject constraint.
 - Product registry, product membership, time-bounded feature entitlements, product plans, and subscriptions.
+- Governed master portfolio registry separating confirmed applications, modules, platform services and unvalidated candidate ideas.
+- Version-controlled portfolio seed at `docs/product-registry/master-product-registry.json`, synchronized non-destructively with `python manage.py sync_product_registry`.
 - First-use product activation that idempotently provisions a product's Free plan without enrolling users in every product.
 - Authenticated subscription status API scoped to the current Nexora identity.
 - Scoped entitlement checks that fail closed when scope does not match.
