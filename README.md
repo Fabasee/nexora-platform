@@ -25,7 +25,8 @@ A modular, service-ready foundation for the Nexora multi-product ecosystem.
 ## Repository layout
 
 ```text
-apps/mobile/             Expo Router application and Firebase client
+apps/mobile/             Expo Router consumer application and Firebase client
+apps/office-web/         Private React/Vite internal operations dashboard
 services/api/            Django REST API
   apps/core/             Health and shared API primitives
   apps/identity/         Canonical Nexora UUID and provider bindings
@@ -40,6 +41,7 @@ docs/development/        Local setup and contribution workflow
 ## Implemented foundation
 
 - Expo mobile shell with a responsive Nexora ecosystem home screen.
+- Separate Nexora Office web workspace with Firebase staff sign-in and a read-only portfolio dashboard backed by staff-only API routes.
 - Firebase client initialization and authentication-state provider.
 - Email/password sign-in, registration, password reset, and account overview screens.
 - Typed API client for the authenticated product catalog.
