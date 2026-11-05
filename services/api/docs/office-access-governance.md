@@ -6,13 +6,13 @@ Every Office API request requires a valid Firebase-verified Nexora identity, act
 
 RBAC uses Django's built-in `auth.Group` membership on `NexoraUser`. Run `python manage.py seed_office_roles` to create the standard groups. The command does not assign users.
 
-| Role | Portfolio | Audit log | Security events | Manage access |
+| Role | Portfolio | Audit log | Security events | Manage sessions | Manage access |
 |---|---:|---:|---:|---:|
-| Office Owner | Yes | Yes | Yes | Yes |
-| Office Security Admin | No | No | Yes | Yes |
-| Office Portfolio Manager | Yes | Yes | No | No |
-| Office Auditor | No | Yes | Yes | No |
-| Office Portfolio Viewer | Yes | No | No | No |
+| Office Owner | Yes | Yes | Yes | Yes | Yes |
+| Office Security Admin | No | No | Yes | Yes | Yes |
+| Office Portfolio Manager | Yes | Yes | No | No | No |
+| Office Auditor | No | Yes | Yes | No | No |
+| Office Portfolio Viewer | Yes | No | No | No | No |
 
 Superusers bypass the role matrix but still require an active staff account and verified email.
 
@@ -24,6 +24,7 @@ Assign groups only through trusted Django Admin / internal operator workflow. Ke
 
 - `GET /api/v1/office/access/me/`: current account roles and effective permissions.
 - `GET /api/v1/office/access/security-events/`: paginated security event metadata; optional `event_type` and `user_id` filters.
+- Session inventory and revocation endpoints are documented in `office-session-governance.md`; only Owner and Security Admin receive `sessions.manage`.
 
 Security event responses omit credentials and token claims. IP address and user-agent are operationally sensitive; restrict this endpoint to Security Admin, Auditor, and Owner roles.
 
